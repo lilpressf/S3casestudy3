@@ -1,0 +1,43 @@
+name: Destroy AWS Infrastructure
+
+on:
+  workflow_dispatch:
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write      
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set Terraform environment variables
+        run: |
+          echo "TF_VAR_ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}" >> $GITHUB_ENV
+          echo "TF_VAR_ssh_cidr=${{ secrets.SSH_CIDR }}" >> $GITHUB_ENV
+          echo "TF_VAR_db_username=${{ secrets.DB_USERNAME }}" >> $GITHUB_ENV
+          echo "TF_VAR_db_password=${{ secrets.DB_PASSWORD }}" >> $GITHUB_ENV
+          echo "TF_VAR_notify_email=${{ secrets.NOTIFY_EMAIL }}" >> $GITHUB_ENV
+          echo "TF_VAR_ecr_image_uri=${{ secrets.ECR_IMAGE_URI }}" >> $GITHUB_ENV
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform Init
+        run: terraform init -reconfigure
+        working-directory: ./terraform
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
+        working-directory: ./terraform
