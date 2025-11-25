@@ -63,11 +63,6 @@ variable "notify_email" {
   type        = string
 }
 
-variable "ecr_image_uri" {
-  description = "URI of the container image in ECR"
-  type        = string
-}
-
 variable "container_port" {
   description = "Container port"
   type        = number
