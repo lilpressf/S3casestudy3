@@ -9,7 +9,7 @@ resource "aws_ecs_cluster" "main" {
   name = "hybrid-ecs-cluster"
 }
 
-# Task execution role (pull from ECR, push logs)
+# Task execution role (pull images, push logs)
 data "aws_iam_policy_document" "ecs_task_exec_assume" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -78,7 +78,7 @@ resource "aws_ecs_task_definition" "webserver" {
   container_definitions = jsonencode([
     {
       name      = "webserver"
-      image     = var.ecr_image_uri
+      image     = "nginx:latest"
       essential = true
       portMappings = [
         {
