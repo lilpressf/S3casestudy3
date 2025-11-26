@@ -34,18 +34,6 @@ variable "private_subnet_b_cidr" {
   default     = "10.0.4.0/24"
 }
 
-variable "db_username" {
-  description = "Database username"
-  type        = string
-  sensitive   = true
-}
-
-variable "db_password" {
-  description = "Database password"
-  type        = string
-  sensitive   = true
-}
-
 variable "ssh_public_key" {
   description = "Contents of your SSH public key"
   type        = string
@@ -58,13 +46,3 @@ variable "ssh_cidr" {
   sensitive   = true
 }
 
-variable "notify_email" {
-  description = "Email to receive SOAR alerts"
-  type        = string
-}
-
-variable "container_port" {
-  description = "Container port"
-  type        = number
-  default     = 8080
-}
