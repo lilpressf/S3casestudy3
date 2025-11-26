@@ -1,11 +1,3 @@
-output "soar_lambda_name" {
-  value = aws_lambda_function.soar.function_name
-}
-
-output "sns_topic_arn" {
-  value = aws_sns_topic.soar_alerts.arn
-}
-
 output "nat_public_ip" {
   value = aws_instance.nat.public_ip
 }
@@ -14,35 +6,43 @@ output "web_key_name" {
   value = aws_key_pair.web_key.key_name
 }
 
-output "dynamodb_table_name" {
-  value = aws_dynamodb_table.app.name
+output "vpc_id" {
+  value       = aws_vpc.main.id
+  description = "VPC ID"
 }
 
-output "cloudwatch_alarm_name" {
-  value = aws_cloudwatch_metric_alarm.alb_5xx_sum.alarm_name
+output "public_subnet_ids" {
+  value       = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+  description = "Public subnet IDs"
 }
 
-output "eventbridge_rules" {
-  value = [
-    aws_cloudwatch_event_rule.sechub_findings.name,
-    aws_cloudwatch_event_rule.guardduty_findings.name,
-    aws_cloudwatch_event_rule.cw_alarm_state.name
-  ]
+output "private_subnet_ids" {
+  value       = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+  description = "Private subnet IDs"
 }
 
-output "alb_dns_name" {
-  value       = aws_lb.web_alb.dns_name
-  description = "Public DNS name of the Application Load Balancer"
+output "nat_public_ip" {
+  value       = aws_instance.nat.public_ip
+  description = "Public IP of the NAT instance"
 }
 
-output "ecs_service_name" {
-  value = aws_ecs_service.webserver.name
+output "eks_cluster_name" {
+  value       = aws_eks_cluster.main.name
+  description = "EKS cluster name"
 }
 
-output "ecs_dns_name" {
-  value = "webapp.${aws_service_discovery_private_dns_namespace.svc.name}"
+output "eks_cluster_endpoint" {
+  value       = aws_eks_cluster.main.endpoint
+  description = "EKS cluster API server endpoint"
 }
 
-output "ecs_log_group_name" {
-  value = aws_cloudwatch_log_group.ecs_webapp.name
+output "eks_cluster_certificate_authority" {
+  value       = aws_eks_cluster.main.certificate_authority[0].data
+  description = "EKS cluster CA data"
 }
+
+output "eks_node_group_name" {
+  value       = aws_eks_node_group.default.node_group_name
+  description = "EKS node group name"
+}
+

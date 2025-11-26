@@ -42,6 +42,12 @@ resource "aws_route_table_association" "private_assoc" {
   route_table_id = aws_route_table.private_rt.id
 }
 
+resource "aws_route_table_association" "private_b_assoc" {
+  subnet_id      = aws_subnet.private_b.id
+  route_table_id = aws_route_table.private_rt.id
+}
+
+
 # NAT Instance
 resource "aws_instance" "nat" {
   ami                         = data.aws_ami.amazon_linux.id
