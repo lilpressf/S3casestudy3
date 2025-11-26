@@ -1,11 +1,3 @@
-output "nat_public_ip" {
-  value = aws_instance.nat.public_ip
-}
-
-output "web_key_name" {
-  value = aws_key_pair.web_key.key_name
-}
-
 output "vpc_id" {
   value       = aws_vpc.main.id
   description = "VPC ID"
