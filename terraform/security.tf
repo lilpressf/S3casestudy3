@@ -11,13 +11,16 @@ resource "aws_security_group" "nat_sg" {
     cidr_blocks = [var.ssh_cidr]
   }
 
-  ingress {
-    description = "Allow traffic from private subnet"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = [var.private_subnet_a_cidr]
-  }
+ingress {
+  description = "Allow traffic from both private subnets"
+  from_port   = 0
+  to_port     = 0
+  protocol    = "-1"
+  cidr_blocks = [
+    var.private_subnet_a_cidr,
+    var.private_subnet_b_cidr
+  ]
+}
 
   egress {
     from_port   = 0
