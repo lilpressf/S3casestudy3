@@ -21,52 +21,38 @@ jobs:
             exit 1
           fi
 
-      # Checkout
+      # Checkout repository
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # AWS Credentials via OIDC
+      # AWS Credentials
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v3
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # Docker build & push
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build Docker image
-        run: |
-          cd backend
-          docker build -t innovatech-backend .
-
-      - name: Tag & Push Docker image
-        run: |
-          ECR="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/innovatech-backend:latest"
-          docker tag innovatech-backend $ECR
-          docker push $ECR
-
-      # Terraform variables
+      # Terraform vars
       - name: Set Terraform env vars
         run: |
           echo "TF_VAR_ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}" >> $GITHUB_ENV
           echo "TF_VAR_ssh_cidr=${{ secrets.SSH_CIDR }}" >> $GITHUB_ENV
 
-      # Terraform setup 
+      # Terraform setup
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.8.5
 
+      # Terraform Init
       - name: Terraform Init
         run: terraform init -reconfigure
         working-directory: ./terraform
 
-      # Clean Nodegroups FIRST
+      # Delete Nodegroups FIRST (otherwise destroy fails)
       - name: Delete EKS Nodegroups (if any)
         run: |
-          echo "Checking for existing EKS nodegroups..."
+          echo "Checking for existing nodegroups..."
           CLUSTER="innovatech-eks"
           REGION="${{ secrets.AWS_REGION }}"
 
@@ -90,13 +76,12 @@ jobs:
             done
           fi
 
-      # Terraform destroy
-      - name: Terraform Destroy (if existing)
-        run: |
-          terraform destroy -auto-approve || echo "Nothing to destroy."
+      # Destroy old infra 
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve || echo "Nothing to destroy."
         working-directory: ./terraform
 
-      # Terraform plan/apply
+      # Terraform plan/apply (THIS CREATES ECR BEFORE DOCKER BUILD)
       - name: Terraform Plan
         run: terraform plan -out=tfplan
         working-directory: ./terraform
@@ -105,20 +90,36 @@ jobs:
         run: terraform apply -auto-approve tfplan
         working-directory: ./terraform
 
-      # Install kubectl (official)
+      # Docker login AFTER ECR exists
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Build Docker
+      - name: Build Docker image
+        run: |
+          cd backend
+          docker build -t innovatech-backend .
+
+      - name: Tag & Push Docker image
+        run: |
+          ECR="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/innovatech-backend:latest"
+          docker tag innovatech-backend $ECR
+          docker push $ECR
+
+      # Install kubectl
       - name: Install kubectl
         run: |
           curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
           sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 
-      # Set kubeconfig
+      # Configure kubeconfig
       - name: Generate kubeconfig
         run: |
           aws eks update-kubeconfig \
             --region ${{ secrets.AWS_REGION }} \
             --name innovatech-eks
 
-      # Prepare temp k8s folder to avoid modifying real files
+      # Prepare temp manifests
       - name: Prepare manifests
         run: |
           mkdir -p k8s-temp
@@ -128,6 +129,7 @@ jobs:
           sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/backend-deployment.yml
           sed -i "s|<AWS_REGION>|${{ secrets.AWS_REGION }}|g" k8s-temp/backend-deployment.yml
 
+      # Deploy to EKS
       - name: Apply manifests
         run: |
           kubectl apply -f k8s-temp/
