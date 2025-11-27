@@ -2,30 +2,22 @@ resource "aws_eks_node_group" "default" {
   cluster_name    = aws_eks_cluster.main.name
   node_group_name = "default-ng"
   node_role_arn   = aws_iam_role.eks_node_role.arn
-
-  subnet_ids = [
+  subnet_ids      = [
     aws_subnet.private_a.id,
     aws_subnet.private_b.id
   ]
 
   scaling_config {
-    desired_size = 2
-    max_size     = 3
+    desired_size = 1
+    max_size     = 2
     min_size     = 1
   }
 
-  instance_types = ["t3.micro"]
+  instance_types = ["t3.small"]
 
-  disk_size = 20
+  ami_type = "BOTTLEROCKET_x86_64"
 
   tags = {
-    Environment = "dev"
-    Role        = "eks-worker"
+    Name = "eks-default-nodegroup"
   }
-
-  depends_on = [
-    aws_iam_role_policy_attachment.eks_worker_node_policy,
-    aws_iam_role_policy_attachment.eks_cni_policy,
-    aws_iam_role_policy_attachment.eks_ecr_readonly
-  ]
 }
