@@ -123,7 +123,7 @@ jobs:
       - name: Prepare manifests
         run: |
           mkdir -p k8s-temp
-          cp k8s/*.yml k8s-temp/
+          cp backend/k8s/*.yml k8s-temp/
 
           sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/serviceaccount.yml
           sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/backend-deployment.yml
