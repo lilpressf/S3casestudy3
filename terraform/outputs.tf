@@ -13,7 +13,6 @@ output "private_subnet_ids" {
   description = "Private subnet IDs"
 }
 
-
 output "eks_cluster_name" {
   value       = aws_eks_cluster.main.name
   description = "EKS cluster name"
@@ -34,3 +33,17 @@ output "eks_node_group_name" {
   description = "EKS node group name"
 }
 
+output "employees_table_name" {
+  value       = aws_dynamodb_table.employees.name
+  description = "DynamoDB employees table name"
+}
+
+output "devices_table_name" {
+  value       = aws_dynamodb_table.devices.name
+  description = "DynamoDB devices table name"
+}
+
+output "audit_logs_table_name" {
+  value       = aws_dynamodb_table.audit_logs.name
+  description = "DynamoDB audit logs table name"
+}
