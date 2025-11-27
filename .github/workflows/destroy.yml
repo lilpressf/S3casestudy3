@@ -65,6 +65,30 @@ jobs:
             echo "No nodegroups found."
           fi
 
+      - name: Empty ECR repository (delete all images)
+        run: |
+          REPO="innovatech-backend"
+          ACCOUNT_ID="${{ secrets.AWS_ACCOUNT_ID }}"
+          REGION="${{ secrets.AWS_REGION }}"
+
+          echo "Deleting images in ECR: $REPO"
+
+          DIGESTS=$(aws ecr list-images \
+            --repository-name $REPO \
+            --region $REGION \
+            --query 'imageIds[*]' \
+            --output json)
+
+          if [ "$DIGESTS" != "[]" ]; then
+            echo "Images found, deleting..."
+            aws ecr batch-delete-image \
+              --repository-name $REPO \
+              --region $REGION \
+              --image-ids "$DIGESTS" || true
+          else
+            echo "ECR repository already empty."
+          fi
+
       - name: Terraform Destroy
         run: terraform destroy -auto-approve
         working-directory: ./terraform
