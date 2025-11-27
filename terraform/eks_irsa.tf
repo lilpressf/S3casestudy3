@@ -1,6 +1,6 @@
 resource "aws_iam_role" "backend_irsa" {
   name = "backend-irsa"
-
+  
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -11,12 +11,7 @@ resource "aws_iam_role" "backend_irsa" {
       Action = "sts:AssumeRoleWithWebIdentity"
     }]
   })
-
-  depends_on = [
-    aws_iam_openid_connect_provider.eks
-  ]
 }
-
 
 resource "aws_iam_role_policy" "backend_dynamodb_policy" {
   role = aws_iam_role.backend_irsa.id
@@ -31,7 +26,7 @@ resource "aws_iam_role_policy" "backend_dynamodb_policy" {
         "dynamodb:GetItem",
         "dynamodb:Scan"
       ],
-      Resource = aws_dynamodb_table.employee.arn
+      Resource = aws_dynamodb_table.employees.arn
     }]
   })
 }
