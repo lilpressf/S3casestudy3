@@ -1,7 +1,7 @@
-name: Deploy AWS Infrastructure
+name: Build, Push & Deploy Infrastructure
 
 on:
-  workflow_dispatch:  
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -11,6 +11,7 @@ jobs:
       contents: read
 
     steps:
+      # Validate branch
       - name: Validate branch
         run: |
           BRANCH_NAME="${GITHUB_REF##*/}"
@@ -20,20 +21,39 @@ jobs:
             exit 1
           fi
 
+      # Checkout
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # AWS Credentials via OIDC
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v3
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Set Terraform environment variables
+      # Docker build & push
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
+        run: |
+          cd backend
+          docker build -t innovatech-backend .
+
+      - name: Tag & Push Docker image
+        run: |
+          ECR="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/innovatech-backend:latest"
+          docker tag innovatech-backend $ECR
+          docker push $ECR
+
+      # Terraform variables
+      - name: Set Terraform env vars
         run: |
           echo "TF_VAR_ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}" >> $GITHUB_ENV
           echo "TF_VAR_ssh_cidr=${{ secrets.SSH_CIDR }}" >> $GITHUB_ENV
 
+      # Terraform setup 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -43,6 +63,7 @@ jobs:
         run: terraform init -reconfigure
         working-directory: ./terraform
 
+      # Clean Nodegroups FIRST
       - name: Delete EKS Nodegroups (if any)
         run: |
           echo "Checking for existing EKS nodegroups..."
@@ -56,30 +77,26 @@ jobs:
             --output text || true)
 
           if [ -n "$NGS" ] && [ "$NGS" != "None" ]; then
-            echo "Nodegroups found: $NGS"
             for NG in $NGS; do
-              echo "Deleting nodegroup: $NG"
               aws eks delete-nodegroup \
                 --cluster-name $CLUSTER \
                 --nodegroup-name $NG \
                 --region $REGION || true
 
-              echo "Waiting for nodegroup deletion: $NG"
               aws eks wait nodegroup-deleted \
                 --cluster-name $CLUSTER \
                 --nodegroup-name $NG \
                 --region $REGION || true
             done
-          else
-            echo "No nodegroups found."
           fi
 
+      # Terraform destroy
       - name: Terraform Destroy (if existing)
         run: |
-          echo "Destroying existing infrastructure (if any)..."
-          terraform destroy -auto-approve || echo "No existing infrastructure to destroy."
+          terraform destroy -auto-approve || echo "Nothing to destroy."
         working-directory: ./terraform
 
+      # Terraform plan/apply
       - name: Terraform Plan
         run: terraform plan -out=tfplan
         working-directory: ./terraform
@@ -87,3 +104,30 @@ jobs:
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
         working-directory: ./terraform
+
+      # Install kubectl (official)
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+      # Set kubeconfig
+      - name: Generate kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region ${{ secrets.AWS_REGION }} \
+            --name innovatech-eks
+
+      # Prepare temp k8s folder to avoid modifying real files
+      - name: Prepare manifests
+        run: |
+          mkdir -p k8s-temp
+          cp k8s/*.yml k8s-temp/
+
+          sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/serviceaccount.yml
+          sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/backend-deployment.yml
+          sed -i "s|<AWS_REGION>|${{ secrets.AWS_REGION }}|g" k8s-temp/backend-deployment.yml
+
+      - name: Apply manifests
+        run: |
+          kubectl apply -f k8s-temp/

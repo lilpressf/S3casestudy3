@@ -47,3 +47,7 @@ output "audit_logs_table_name" {
   value       = aws_dynamodb_table.audit_logs.name
   description = "DynamoDB audit logs table name"
 }
+
+output "ecr_backend_url" {
+  value = aws_ecr_repository.backend.repository_url
+}

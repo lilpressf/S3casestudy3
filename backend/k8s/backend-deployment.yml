@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: innovatech-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: innovatech-backend
+  template:
+    metadata:
+      labels:
+        app: innovatech-backend
+    spec:
+      serviceAccountName: backend-sa
+      containers:
+      - name: backend
+        image: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/innovatech-backend:latest
+        ports:
+        - containerPort: 5000
+        env:
+        - name: AWS_REGION
+          value: <AWS_REGION>
