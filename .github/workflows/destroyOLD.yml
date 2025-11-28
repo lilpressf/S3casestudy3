@@ -1,4 +1,4 @@
-name: Destroy AWS Infrastructure
+name: OLD DESTROY ONLY USE WHEN NEEDED FOR ECR
 
 on:
   workflow_dispatch:
