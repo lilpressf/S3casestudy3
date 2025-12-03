@@ -88,15 +88,3 @@ variable "workspaces_bundle_id" {
   default     = ""
 }
 
-variable "hosted_zone_name" {
-  description = "Public hosted zone domain name (managed in Route53)"
-  type        = string
-  default     = "daanwelten.nl"
-}
-
-variable "portal_subdomain" {
-  description = "Subdomain for the portal (will be ALIASed to the ALB)"
-  type        = string
-  default     = "portal"
-}
-

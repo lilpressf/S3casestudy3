@@ -86,13 +86,3 @@ output "cognito_hosted_ui" {
   description = "Hosted UI URL (replace callback URL when ALB DNS known)"
   value       = "https://${aws_cognito_user_pool_domain.portal.domain}.auth.${var.aws_region}.amazoncognito.com/login?client_id=${aws_cognito_user_pool_client.portal.id}&response_type=code&scope=email+openid+profile&redirect_uri=${urlencode(var.cognito_callback_urls[0])}"
 }
-
-output "portal_domain" {
-  description = "Portal FQDN served by the ALB"
-  value       = local.portal_fqdn
-}
-
-output "portal_certificate_arn" {
-  description = "ACM certificate ARN for the portal domain"
-  value       = aws_acm_certificate.portal.arn
-}

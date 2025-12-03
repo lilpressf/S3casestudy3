@@ -49,38 +49,6 @@ jobs:
         run: terraform init -reconfigure
         working-directory: ./terraform
 
-      # Delete Nodegroups FIRST
-      - name: Delete EKS Nodegroups (if any)
-        run: |
-          echo "Checking for existing nodegroups..."
-          CLUSTER="innovatech-eks"
-          REGION="${{ secrets.AWS_REGION }}"
-
-          NGS=$(aws eks list-nodegroups \
-            --cluster-name $CLUSTER \
-            --region $REGION \
-            --query 'nodegroups' \
-            --output text || true)
-
-          if [ -n "$NGS" ] && [ "$NGS" != "None" ]; then
-            for NG in $NGS; do
-              aws eks delete-nodegroup \
-                --cluster-name $CLUSTER \
-                --nodegroup-name $NG \
-                --region $REGION || true
-
-              aws eks wait nodegroup-deleted \
-                --cluster-name $CLUSTER \
-                --nodegroup-name $NG \
-                --region $REGION || true
-            done
-          fi
-
-      # Destroy old infra 
-      - name: Terraform Destroy
-        run: terraform destroy -auto-approve || echo "Nothing to destroy."
-        working-directory: ./terraform
-
       # Terraform plan/apply (ECR created here)
       - name: Terraform Plan
         run: terraform plan -out=tfplan
@@ -95,7 +63,6 @@ jobs:
         run: |
           echo "COGNITO_POOL_ID=$(terraform -chdir=terraform output -raw cognito_user_pool_id)" >> $GITHUB_ENV
           echo "COGNITO_CLIENT_ID=$(terraform -chdir=terraform output -raw cognito_user_pool_client_id)" >> $GITHUB_ENV
-          echo "PORTAL_CERT_ARN=$(terraform -chdir=terraform output -raw portal_certificate_arn)" >> $GITHUB_ENV
 
       # Docker login AFTER ECR exists
       - name: Login to Amazon ECR
@@ -154,8 +121,6 @@ jobs:
           sed -i "s|<AWS_REGION>|${{ secrets.AWS_REGION }}|g" k8s-temp/frontend-deployment.yml
           sed -i "s|<COGNITO_POOL_ID>|${COGNITO_POOL_ID}|g" k8s-temp/backend-deployment.yml
           sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/backend-deployment.yml
-          sed -i "s|<ACM_CERT_ARN>|${PORTAL_CERT_ARN}|g" k8s-temp/frontend-ingress.yml
-          sed -i "s|<ACM_CERT_ARN>|${PORTAL_CERT_ARN}|g" k8s-temp/backend-ingress.yml
 
       # Deploy to EKS
       - name: Apply manifests
