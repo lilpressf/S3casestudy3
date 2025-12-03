@@ -8,6 +8,7 @@ import time
 import json
 import urllib.request
 from jose import jwt, JWTError
+from functools import wraps
 
 app = Flask(__name__)
 
@@ -20,6 +21,11 @@ WORKSPACES_DIRECTORY_ID = os.getenv("WORKSPACES_DIRECTORY_ID", "")
 WORKSPACES_BUNDLE_ID = os.getenv("WORKSPACES_BUNDLE_ID", "")
 automator = Automation()
 
+# Simple in-memory JWKS cache
+_JWKS_CACHE = None
+_JWKS_CACHE_TS = 0
+_JWKS_TTL_SECONDS = 300  # 5 minutes
+
 
 def write_audit(action, email, status="started", detail=None):
     audit = {
@@ -29,16 +35,30 @@ def write_audit(action, email, status="started", detail=None):
         "status": status,
         "timestamp": int(time.time()),
     }
-    if detail:
+    if detail is not None:
         audit["detail"] = detail
     dynamodb_table(AUDIT_TABLE).put_item(Item=audit)
 
 
 def get_jwks():
+    """Fetch JWKS from Cognito, with a small in-memory cache."""
+    global _JWKS_CACHE, _JWKS_CACHE_TS
+
+    now = time.time()
+    if _JWKS_CACHE is not None and now - _JWKS_CACHE_TS < _JWKS_TTL_SECONDS:
+        return _JWKS_CACHE
+
+    if not COGNITO_POOL_ID:
+        raise RuntimeError("COGNITO_POOL_ID is not configured")
+
     url = f"https://cognito-idp.{COGNITO_REGION}.amazonaws.com/{COGNITO_POOL_ID}/.well-known/jwks.json"
     with urllib.request.urlopen(url) as resp:
         body = resp.read()
-    return json.loads(body.decode("utf-8"))
+    jwks = json.loads(body.decode("utf-8"))
+
+    _JWKS_CACHE = jwks
+    _JWKS_CACHE_TS = now
+    return jwks
 
 
 def extract_token():
@@ -46,10 +66,14 @@ def extract_token():
     auth_header = request.headers.get("Authorization")
     if auth_header and auth_header.startswith("Bearer "):
         return auth_header.split(" ", 1)[1]
+
     # ALB OIDC authentication injects the token in x-amzn-oidc-data
     alb_oidc = request.headers.get("x-amzn-oidc-data")
     if alb_oidc:
+        # ALB can pass the JWT directly; if your setup base64-encodes it,
+        # this is where you would decode it.
         return alb_oidc
+
     raise ValueError("Missing or invalid Authorization header")
 
 
@@ -58,9 +82,10 @@ def verify_token(token: str):
     try:
         unverified = jwt.get_unverified_header(token)
         kid = unverified.get("kid")
-        key = next((k for k in jwks["keys"] if k["kid"] == kid), None)
+        key = next((k for k in jwks["keys"] if k.get("kid") == kid), None)
         if not key:
-            raise ValueError("No matching JWK")
+            raise ValueError("No matching JWK for token")
+
         claims = jwt.decode(
             token,
             key,
@@ -74,18 +99,19 @@ def verify_token(token: str):
 
 
 def require_auth(fn):
+    @wraps(fn)
     def wrapper(*args, **kwargs):
         if not COGNITO_POOL_ID or not COGNITO_CLIENT_ID:
             return jsonify({"error": "Auth not configured"}), 500
         try:
             token = extract_token()
             claims = verify_token(token)
+            # attach claims to the request for downstream handlers
             request.claims = claims
         except ValueError as err:
             return jsonify({"error": str(err)}), 401
         return fn(*args, **kwargs)
 
-    wrapper.__name__ = fn.__name__
     return wrapper
 
 
@@ -123,28 +149,30 @@ def onboard():
     )
     workspace = automator.provision_workspace(email=data["email"])
 
-    workspace_id = workspace.get("workspace_id") if isinstance(workspace, dict) else None
+    workspace_id = (
+        workspace.get("workspace_id") if isinstance(workspace, dict) else None
+    )
     detail = {"identity": identity, "workspace": workspace}
 
     # Persist workspace id and status for later offboarding
-    update_values = {
-        "status": "onboard_submitted",
-        "workspace_id": workspace_id,
-        "detail": detail,
-    }
     dynamodb_table(EMP_TABLE).update_item(
         Key={"employee_id": employee_id},
         UpdateExpression="SET #s = :status, workspace_id = :ws, detail = :detail",
         ExpressionAttributeNames={"#s": "status"},
         ExpressionAttributeValues={
-            ":status": update_values["status"],
-            ":ws": update_values["workspace_id"],
+            ":status": "onboard_submitted",
+            ":ws": workspace_id,
             ":detail": json.dumps(detail),
         },
     )
 
     write_audit("onboard", data["email"], status="submitted", detail=json.dumps(detail))
-    return jsonify({"message": "Onboarding started", "employee_id": employee_id, "detail": detail}), 201
+    return (
+        jsonify(
+            {"message": "Onboarding started", "employee_id": employee_id, "detail": detail}
+        ),
+        201,
+    )
 
 
 @app.route("/api/offboard", methods=["POST"])
@@ -188,4 +216,5 @@ def offboard():
 
 
 if __name__ == "__main__":
+    # For local dev only; in Kubernetes we use Gunicorn (see Dockerfile)
     app.run(host="0.0.0.0", port=5000)

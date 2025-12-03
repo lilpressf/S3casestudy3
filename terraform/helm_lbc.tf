@@ -1,13 +1,9 @@
-# AWS Load Balancer Controller via Helm   
+# AWS Load Balancer Controller via Helm
 provider "helm" {
   kubernetes {
     host                   = aws_eks_cluster.main.endpoint
     cluster_ca_certificate = base64decode(aws_eks_cluster.main.certificate_authority[0].data)
-    exec {
-      api_version = "client.authentication.k8s.io/v1beta1"
-      command     = "aws"
-      args        = ["eks", "get-token", "--region", var.aws_region, "--cluster-name", aws_eks_cluster.main.name]
-    }
+    token                  = data.aws_eks_cluster_auth.cluster.token
   }
 }
 
@@ -15,6 +11,7 @@ resource "helm_release" "aws_load_balancer_controller" {
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
+  # Keep this version aligned with the IAM policy file you downloaded
   version    = "1.10.1"
   namespace  = "kube-system"
 
@@ -50,7 +47,11 @@ resource "helm_release" "aws_load_balancer_controller" {
 
   depends_on = [
     aws_eks_cluster.main,
-    aws_iam_role_policy.lbc_inline,
-    aws_eks_node_group.default
+    aws_eks_node_group.default,
+    aws_iam_role_policy_attachment.eks_cluster_policy,
+    aws_iam_role_policy_attachment.eks_worker_node_policy,
+    aws_iam_role_policy_attachment.eks_cni_policy,
+    aws_iam_role_policy_attachment.eks_ecr_readonly,
+    aws_iam_role_policy_attachment.lbc_attach,
   ]
 }

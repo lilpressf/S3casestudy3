@@ -20,6 +20,14 @@ resource "aws_dynamodb_table" "employees" {
     projection_type = "ALL"
   }
 
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  server_side_encryption {
+    enabled = true
+  }
+
   tags = {
     Environment = "dev"
     Project     = "cs3-innovatech"
@@ -38,6 +46,14 @@ resource "aws_dynamodb_table" "devices" {
     type = "S"
   }
 
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  server_side_encryption {
+    enabled = true
+  }
+
   tags = {
     Environment = "dev"
     Project     = "cs3-innovatech"
@@ -54,6 +70,14 @@ resource "aws_dynamodb_table" "audit_logs" {
   attribute {
     name = "log_id"
     type = "S"
+  }
+
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  server_side_encryption {
+    enabled = true
   }
 
   tags = {

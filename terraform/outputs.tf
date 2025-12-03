@@ -62,6 +62,11 @@ output "lbc_irsa_role_arn" {
   value       = aws_iam_role.lbc_irsa.arn
 }
 
+output "backend_irsa_role_arn" {
+  description = "IAM role ARN for the backend IRSA service account"
+  value       = aws_iam_role.backend_irsa.arn
+}
+
 output "cognito_user_pool_id" {
   description = "Cognito User Pool ID for portal authentication"
   value       = aws_cognito_user_pool.portal.id

@@ -10,7 +10,8 @@ resource "aws_s3_bucket" "trail" {
   force_destroy = true
 
   tags = {
-    Name = "cloudtrail-logs"
+    Name        = "cloudtrail-logs"
+    Environment = "dev"
   }
 }
 
@@ -31,6 +32,17 @@ resource "aws_s3_bucket_ownership_controls" "trail" {
   }
 }
 
+# Server-side encryption
+resource "aws_s3_bucket_server_side_encryption_configuration" "trail" {
+  bucket = aws_s3_bucket.trail.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
 # correct permissions for CloudTrail
 resource "aws_s3_bucket_policy" "trail" {
   bucket = aws_s3_bucket.trail.id
@@ -39,25 +51,25 @@ resource "aws_s3_bucket_policy" "trail" {
     Version = "2012-10-17",
     Statement = [
       {
-        Sid: "AWSCloudTrailAclCheck",
-        Effect: "Allow",
-        Principal: {
-          Service: "cloudtrail.amazonaws.com"
+        Sid      = "AWSCloudTrailAclCheck",
+        Effect   = "Allow",
+        Principal = {
+          Service = "cloudtrail.amazonaws.com"
         },
-        Action: "s3:GetBucketAcl",
-        Resource: aws_s3_bucket.trail.arn
+        Action   = "s3:GetBucketAcl",
+        Resource = aws_s3_bucket.trail.arn
       },
       {
-        Sid: "AWSCloudTrailWrite",
-        Effect: "Allow",
-        Principal: {
-          Service: "cloudtrail.amazonaws.com"
+        Sid      = "AWSCloudTrailWrite",
+        Effect   = "Allow",
+        Principal = {
+          Service = "cloudtrail.amazonaws.com"
         },
-        Action: "s3:PutObject",
-        Resource: "${aws_s3_bucket.trail.arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/*",
-        Condition: {
-          StringEquals: {
-            "aws:SourceAccount": data.aws_caller_identity.current.account_id
+        Action   = "s3:PutObject",
+        Resource = "${aws_s3_bucket.trail.arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/*",
+        Condition = {
+          StringEquals = {
+            "aws:SourceAccount" = data.aws_caller_identity.current.account_id
           }
         }
       }
@@ -81,6 +93,7 @@ resource "aws_cloudtrail" "main" {
 
   depends_on = [
     aws_s3_bucket_policy.trail,
-    aws_s3_bucket_ownership_controls.trail
+    aws_s3_bucket_ownership_controls.trail,
+    aws_s3_bucket_server_side_encryption_configuration.trail
   ]
 }

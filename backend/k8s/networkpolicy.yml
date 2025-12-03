@@ -34,27 +34,6 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-frontend-to-backend
-  namespace: default
-spec:
-  podSelector:
-    matchLabels:
-      app: innovatech-backend
-  ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              app: innovatech-frontend
-      ports:
-        - protocol: TCP
-          port: 5000
-  policyTypes:
-    - Ingress
-
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
   name: allow-alb-to-backend
   namespace: default
 spec:
@@ -72,27 +51,6 @@ spec:
           port: 5000
   policyTypes:
     - Ingress
-
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-frontend-egress-to-backend
-  namespace: default
-spec:
-  podSelector:
-    matchLabels:
-      app: innovatech-frontend
-  egress:
-    - to:
-        - podSelector:
-            matchLabels:
-              app: innovatech-backend
-      ports:
-        - protocol: TCP
-          port: 5000
-  policyTypes:
-    - Egress
 
 ---
 apiVersion: networking.k8s.io/v1

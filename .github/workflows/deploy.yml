@@ -1,17 +1,28 @@
-name: Build, Push & Deploy Infrastructure
+name: Build, Push & Deploy Infrastructure and App
 
 on:
   workflow_dispatch:
 
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
 jobs:
-  deploy:
+  infra:
+    name: Terraform & Cluster Bootstrap
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
+    outputs:
+      eks_cluster_name: ${{ steps.tf_outputs.outputs.eks_cluster_name }}
+      eks_node_role_arn: ${{ steps.tf_outputs.outputs.eks_node_role_arn }}
+      eks_node_group_name: ${{ steps.tf_outputs.outputs.eks_node_group_name }}
+      cognito_user_pool_id: ${{ steps.tf_outputs.outputs.cognito_user_pool_id }}
+      cognito_user_pool_client_id: ${{ steps.tf_outputs.outputs.cognito_user_pool_client_id }}
+      cognito_user_pool_domain: ${{ steps.tf_outputs.outputs.cognito_user_pool_domain }}
 
     steps:
-      # Validate branch
       - name: Validate branch
         run: |
           BRANCH_NAME="${GITHUB_REF##*/}"
@@ -21,22 +32,20 @@ jobs:
             exit 1
           fi
 
-      # Checkout repository
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # AWS Credentials
       - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v3
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      # Terraform vars
       - name: Set Terraform env vars
         run: |
           echo "TF_VAR_ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}" >> $GITHUB_ENV
           echo "TF_VAR_ssh_cidr=${{ secrets.SSH_CIDR }}" >> $GITHUB_ENV
+
           wrap_list() {
             val="$1"
             if echo "$val" | grep -Eq '^\s*\[.*\]\s*$'; then
@@ -45,158 +54,234 @@ jobs:
               echo "[\"$val\"]"
             fi
           }
+
           echo "TF_VAR_cognito_callback_urls=$(wrap_list "${{ secrets.TF_VAR_COGNITO_CALLBACK_URLS }}")" >> $GITHUB_ENV
           echo "TF_VAR_cognito_logout_urls=$(wrap_list "${{ secrets.TF_VAR_COGNITO_LOGOUT_URLS }}")" >> $GITHUB_ENV
 
-      # Terraform setup
+          # Optional WorkSpaces parameters (can be empty)
+          echo "TF_VAR_workspaces_directory_id=${{ secrets.WORKSPACES_DIRECTORY_ID }}" >> $GITHUB_ENV
+          echo "TF_VAR_workspaces_bundle_id=${{ secrets.WORKSPACES_BUNDLE_ID }}" >> $GITHUB_ENV
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.8.5
 
-      # Terraform Init
       - name: Terraform Init
+        working-directory: ./terraform
         run: terraform init -reconfigure
-        working-directory: ./terraform
 
-      # Terraform plan/apply (ECR created here)
       - name: Terraform Plan
-        run: terraform plan -out=tfplan
         working-directory: ./terraform
+        run: terraform plan -out=tfplan
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
         working-directory: ./terraform
+        run: terraform apply -auto-approve tfplan
 
-      # Capture Terraform outputs for manifests
-      - name: Capture Terraform outputs
+      - name: Collect Terraform outputs
+        id: tf_outputs
+        working-directory: ./terraform
         run: |
-          echo "COGNITO_POOL_ID=$(terraform -chdir=terraform output -raw cognito_user_pool_id)" >> $GITHUB_ENV
-          echo "COGNITO_CLIENT_ID=$(terraform -chdir=terraform output -raw cognito_user_pool_client_id)" >> $GITHUB_ENV
-          echo "COGNITO_POOL_DOMAIN=$(terraform -chdir=terraform output -raw cognito_user_pool_domain)" >> $GITHUB_ENV
-          echo "EKS_NODE_ROLE_ARN=$(terraform -chdir=terraform output -raw eks_node_role_arn)" >> $GITHUB_ENV
+          CLUSTER_NAME=$(terraform output -raw eks_cluster_name)
+          NODE_ROLE_ARN=$(terraform output -raw eks_node_role_arn)
+          NODE_GROUP_NAME=$(terraform output -raw eks_node_group_name)
+          COGNITO_POOL_ID=$(terraform output -raw cognito_user_pool_id)
+          COGNITO_CLIENT_ID=$(terraform output -raw cognito_user_pool_client_id)
+          COGNITO_POOL_DOMAIN=$(terraform output -raw cognito_user_pool_domain)
 
-      # Docker login AFTER ECR exists
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
+          echo "eks_cluster_name=$CLUSTER_NAME" >> $GITHUB_OUTPUT
+          echo "eks_node_role_arn=$NODE_ROLE_ARN" >> $GITHUB_OUTPUT
+          echo "eks_node_group_name=$NODE_GROUP_NAME" >> $GITHUB_OUTPUT
+          echo "cognito_user_pool_id=$COGNITO_POOL_ID" >> $GITHUB_OUTPUT
+          echo "cognito_user_pool_client_id=$COGNITO_CLIENT_ID" >> $GITHUB_OUTPUT
+          echo "cognito_user_pool_domain=$COGNITO_POOL_DOMAIN" >> $GITHUB_OUTPUT
 
-      # Build Docker
-      - name: Build Docker images
-        run: |
-          cd backend
-          docker build -t innovatech-backend .
-          cd ../frontend
-          docker build -t innovatech-frontend .
+          # Also export to env for later steps in this job
+          echo "EKS_CLUSTER_NAME=$CLUSTER_NAME" >> $GITHUB_ENV
+          echo "EKS_NODE_ROLE_ARN=$NODE_ROLE_ARN" >> $GITHUB_ENV
+          echo "EKS_NODE_GROUP_NAME=$NODE_GROUP_NAME" >> $GITHUB_ENV
 
-      - name: Tag & Push Docker images
-        run: |
-          ECR="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/innovatech-backend:latest"
-          ECR_FE="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/innovatech-frontend:latest"
-          docker tag innovatech-backend $ECR
-          docker push $ECR
-          docker tag innovatech-frontend $ECR_FE
-          docker push $ECR_FE
-
-      # Install kubectl
       - name: Install kubectl
         run: |
           curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
           sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 
-      # Configure kubeconfig
-      - name: Generate kubeconfig
+      - name: Generate kubeconfig for EKS
         run: |
           aws eks update-kubeconfig \
-            --region ${{ secrets.AWS_REGION }} \
-            --name innovatech-eks
+            --region "$AWS_REGION" \
+            --name "$EKS_CLUSTER_NAME"
 
-      # ADD SSO ROLE + NODE ROLE TO EKS AUTOMATICALLY (before controller wait)
-      - name: Apply aws-auth mapping (nodes + SSO)
+      - name: Apply aws-auth ConfigMap (nodes + SSO)
         env:
           AWS_SSO_ROLE_ARN: ${{ secrets.AWS_SSO_ROLE_ARN }}
-          EKS_NODE_ROLE_ARN: ${{ env.EKS_NODE_ROLE_ARN }}
         run: |
           cd backend/k8s
+          # Use envsubst on a template that has ${EKS_NODE_ROLE_ARN} and ${AWS_SSO_ROLE_ARN}
+          export EKS_NODE_ROLE_ARN
+          export AWS_SSO_ROLE_ARN
           envsubst < aws-auth-template.yml > aws-auth.yml
           kubectl apply -f aws-auth.yml
 
-      # Wait for AWS Load Balancer Controller (with diagnostics and hard timeout)
-      - name: Ensure AWS Load Balancer Controller Ready
+      - name: Wait for worker nodes Ready
+        run: |
+          echo "Waiting for worker nodes to become Ready..."
+          kubectl wait --for=condition=Ready node --all --timeout=600s
+
+      - name: Wait for AWS Load Balancer Controller deployment
         run: |
           set -euo pipefail
           NAMESPACE=kube-system
           DEPLOYMENT=aws-load-balancer-controller
-          TIMEOUT=300s
+          TIMEOUT=600s
 
           echo "Waiting for $DEPLOYMENT rollout (timeout $TIMEOUT)"
-          if timeout $TIMEOUT kubectl -n $NAMESPACE rollout status deployment/$DEPLOYMENT --timeout=$TIMEOUT; then
-            exit 0
+          kubectl -n $NAMESPACE rollout status deployment/$DEPLOYMENT --timeout=$TIMEOUT
+
+  build_and_push:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    needs: infra
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build backend image
+        run: |
+          cd backend
+          docker build -t innovatech-backend .
+
+      - name: Build frontend image
+        run: |
+          cd frontend
+          docker build -t innovatech-frontend .
+
+      - name: Tag & Push Docker images
+        run: |
+          BACKEND_ECR="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/innovatech-backend:latest"
+          FRONTEND_ECR="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/innovatech-frontend:latest"
+
+          docker tag innovatech-backend "$BACKEND_ECR"
+          docker push "$BACKEND_ECR"
+
+          docker tag innovatech-frontend "$FRONTEND_ECR"
+          docker push "$FRONTEND_ECR"
+
+  deploy_app:
+    name: Deploy App to EKS
+    runs-on: ubuntu-latest
+    needs:
+      - infra
+      - build_and_push
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      EKS_CLUSTER_NAME: ${{ needs.infra.outputs.eks_cluster_name }}
+      COGNITO_POOL_ID: ${{ needs.infra.outputs.cognito_user_pool_id }}
+      COGNITO_CLIENT_ID: ${{ needs.infra.outputs.cognito_user_pool_client_id }}
+      COGNITO_POOL_DOMAIN: ${{ needs.infra.outputs.cognito_user_pool_domain }}
+      WORKSPACES_DIRECTORY_ID: ${{ secrets.WORKSPACES_DIRECTORY_ID }}
+      WORKSPACES_BUNDLE_ID: ${{ secrets.WORKSPACES_BUNDLE_ID }}
+
+    steps:
+      - name: Validate branch
+        run: |
+          BRANCH_NAME="${GITHUB_REF##*/}"
+          echo "Running on branch: $BRANCH_NAME"
+          if [ "$BRANCH_NAME" != "test" ]; then
+            echo "ERROR: This workflow can only run on the 'test' branch."
+            exit 1
           fi
 
-          echo "Controller not ready on first attempt; collecting diagnostics..."
-          kubectl -n $NAMESPACE get pods -l app.kubernetes.io/name=$DEPLOYMENT -o wide || true
-          kubectl -n $NAMESPACE describe deployment/$DEPLOYMENT || true
-          kubectl -n $NAMESPACE get events --sort-by=.lastTimestamp | tail -n 40 || true
-          kubectl -n $NAMESPACE logs deployment/$DEPLOYMENT --tail=200 || true
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-          echo "Restarting deployment and waiting again (rollout + pod ready check)..."
-          kubectl -n $NAMESPACE rollout restart deployment/$DEPLOYMENT
-          timeout $TIMEOUT kubectl -n $NAMESPACE rollout status deployment/$DEPLOYMENT --timeout=$TIMEOUT || true
-          timeout $TIMEOUT kubectl -n $NAMESPACE wait --for=condition=Ready pod -l app.kubernetes.io/name=$DEPLOYMENT --timeout=$TIMEOUT
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      # Prepare temp manifests
-      - name: Prepare manifests
+      - name: Install kubectl
         run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+      - name: Generate kubeconfig for EKS
+        run: |
+          aws eks update-kubeconfig \
+            --region "$AWS_REGION" \
+            --name "$EKS_CLUSTER_NAME"
+
+      - name: Prepare templated manifests
+        run: |
+          set -euo pipefail
+
           mkdir -p k8s-temp/backend k8s-temp/frontend
           cp backend/k8s/*.yml k8s-temp/backend/
           cp frontend/k8s/*.yml k8s-temp/frontend/
 
-          sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/backend/backend-deployment.yml
-          sed -i "s|<AWS_REGION>|${{ secrets.AWS_REGION }}|g" k8s-temp/backend/backend-deployment.yml
-          sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/backend/serviceaccount.yml
+          # Backend deployment & serviceaccount & ingress
+          sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/backend/backend-deployment.yml
+          sed -i "s|<AWS_REGION>|${AWS_REGION}|g" k8s-temp/backend/backend-deployment.yml
           sed -i "s|<COGNITO_POOL_ID>|${COGNITO_POOL_ID}|g" k8s-temp/backend/backend-deployment.yml
           sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/backend/backend-deployment.yml
-          sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/frontend/deployment.yml
-          sed -i "s|<AWS_REGION>|${{ secrets.AWS_REGION }}|g" k8s-temp/frontend/deployment.yml
-          sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/backend/backend-ingress.yml
-          sed -i "s|<AWS_REGION>|${{ secrets.AWS_REGION }}|g" k8s-temp/backend/backend-ingress.yml
+          sed -i "s|<WORKSPACES_DIRECTORY_ID>|${WORKSPACES_DIRECTORY_ID}|g" k8s-temp/backend/backend-deployment.yml
+          sed -i "s|<WORKSPACES_BUNDLE_ID>|${WORKSPACES_BUNDLE_ID}|g" k8s-temp/backend/backend-deployment.yml
+
+          sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/backend/serviceaccount.yml
+
+          sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/backend/backend-ingress.yml
+          sed -i "s|<AWS_REGION>|${AWS_REGION}|g" k8s-temp/backend/backend-ingress.yml
           sed -i "s|<COGNITO_POOL_ID>|${COGNITO_POOL_ID}|g" k8s-temp/backend/backend-ingress.yml
           sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/backend/backend-ingress.yml
           sed -i "s|<COGNITO_POOL_DOMAIN>|${COGNITO_POOL_DOMAIN}|g" k8s-temp/backend/backend-ingress.yml
-          sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/frontend/ingress.yml
-          sed -i "s|<AWS_REGION>|${{ secrets.AWS_REGION }}|g" k8s-temp/frontend/ingress.yml
+
+          # Frontend deployment & ingress
+          sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/frontend/deployment.yml
+          sed -i "s|<AWS_REGION>|${AWS_REGION}|g" k8s-temp/frontend/deployment.yml
+
+          sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/frontend/ingress.yml
+          sed -i "s|<AWS_REGION>|${AWS_REGION}|g" k8s-temp/frontend/ingress.yml
           sed -i "s|<COGNITO_POOL_ID>|${COGNITO_POOL_ID}|g" k8s-temp/frontend/ingress.yml
           sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/frontend/ingress.yml
           sed -i "s|<COGNITO_POOL_DOMAIN>|${COGNITO_POOL_DOMAIN}|g" k8s-temp/frontend/ingress.yml
 
-      # Deploy to EKS
-      - name: Apply manifests
+      - name: Apply backend manifests
         run: |
           kubectl apply -f k8s-temp/backend/
+
+      - name: Apply frontend manifests
+        run: |
           kubectl apply -f k8s-temp/frontend/
 
-      # Ensure new images are pulled and pods refreshed
-      - name: Rollout restart app deployments
-        run: |
-          kubectl rollout restart deployment/innovatech-frontend
-          kubectl rollout restart deployment/innovatech-backend
-
-      # Post-deploy smoke test against ingress ALB
-      - name: Smoke test /api/health
+      - name: Wait for app deployments to become Ready
         run: |
           set -euo pipefail
-          HOST=""
-          for i in {1..12}; do
-            HOST=$(kubectl get ingress frontend -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' || true)
-            if [ -n "$HOST" ]; then break; fi
-            echo "Waiting for ingress hostname... ($i/12)"
-            sleep 10
-          done
-          if [ -z "$HOST" ]; then
-            echo "Ingress hostname not available; skipping smoke test."
-            exit 1
-          fi
-          echo "Ingress host: $HOST"
-          # Small delay to let DNS propagate
-          sleep 5
-          curl -L --max-time 20 --retry 5 --retry-delay 5 --fail "http://$HOST/api/health"
+          kubectl rollout status deployment/innovatech-backend --timeout=600s
+          kubectl rollout status deployment/innovatech-frontend --timeout=600s
+
+      - name: Smoke test backend /api/health from inside cluster
+        run: |
+          set -euo pipefail
+          # Run a temporary curl pod that calls the backend service directly (no ALB / Cognito)
+          kubectl run curl-tester --rm -i --tty \
+            --image=curlimages/curl:latest \
+            --restart=Never \
+            -- sh -c "curl -sSf http://backend:5000/api/health && echo 'OK'" 
