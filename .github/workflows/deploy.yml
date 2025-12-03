@@ -185,6 +185,16 @@ jobs:
       - name: Smoke test /api/health
         run: |
           set -euo pipefail
-          HOST=$(kubectl get ingress frontend -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          HOST=""
+          for i in {1..12}; do
+            HOST=$(kubectl get ingress frontend -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' || true)
+            if [ -n "$HOST" ]; then break; fi
+            echo "Waiting for ingress hostname... ($i/12)"
+            sleep 10
+          done
+          if [ -z "$HOST" ]; then
+            echo "Ingress hostname not available; skipping smoke test."
+            exit 1
+          fi
           echo "Ingress host: $HOST"
           curl -L --max-time 20 --retry 5 --retry-delay 5 --fail "http://$HOST/api/health"
