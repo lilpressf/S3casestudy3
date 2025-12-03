@@ -120,26 +120,12 @@ jobs:
             --name innovatech-eks
 
       # ADD SSO ROLE TO EKS AUTOMATICALLY
-      - name: Grant EKS access to SSO role
+      - name: Apply aws-auth mapping for SSO role
         env:
           AWS_SSO_ROLE_ARN: ${{ secrets.AWS_SSO_ROLE_ARN }}
         run: |
-          echo "Patching aws-auth to allow SSO role..."
-
-          cat <<EOF > aws-auth.yml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: aws-auth
-  namespace: kube-system
-data:
-  mapRoles: |
-    - rolearn: ${AWS_SSO_ROLE_ARN}
-      username: sso-user
-      groups:
-        - system:masters
-EOF
-
+          cd backend/k8s
+          envsubst < aws-auth-template.yml > aws-auth.yml
           kubectl apply -f aws-auth.yml
 
       # Prepare temp manifests

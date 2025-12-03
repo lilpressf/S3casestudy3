@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-auth
+  namespace: kube-system
+data:
+  mapRoles: |
+    - rolearn: ${AWS_SSO_ROLE_ARN}
+      username: sso-user
+      groups:
+        - system:masters
