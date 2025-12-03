@@ -9,6 +9,7 @@ metadata:
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
     alb.ingress.kubernetes.io/group.name: innovatech
+    alb.ingress.kubernetes.io/healthcheck-path: /api/health
 spec:
   rules:
     - http:

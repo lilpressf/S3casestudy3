@@ -12,6 +12,28 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
+  name: allow-alb-to-frontend
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: innovatech-frontend
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 10.0.1.0/24  # public subnet A
+        - ipBlock:
+            cidr: 10.0.2.0/24  # public subnet B
+      ports:
+        - protocol: TCP
+          port: 80
+  policyTypes:
+    - Ingress
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
   name: allow-frontend-to-backend
   namespace: default
 spec:
@@ -28,3 +50,86 @@ spec:
           port: 5000
   policyTypes:
     - Ingress
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-alb-to-backend
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: innovatech-backend
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 10.0.1.0/24  # public subnet A
+        - ipBlock:
+            cidr: 10.0.2.0/24  # public subnet B
+      ports:
+        - protocol: TCP
+          port: 5000
+  policyTypes:
+    - Ingress
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-egress-to-backend
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: innovatech-frontend
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: innovatech-backend
+      ports:
+        - protocol: TCP
+          port: 5000
+  policyTypes:
+    - Egress
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-egress-https
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: innovatech-backend
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+  policyTypes:
+    - Egress
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-egress-https
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: innovatech-frontend
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+  policyTypes:
+    - Egress
