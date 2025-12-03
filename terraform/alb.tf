@@ -1,7 +1,4 @@
-#############################
-# Application Load Balancer #
-#############################
-
+# Application Load Balancer 
 resource "aws_security_group" "alb_sg" {
   name        = "alb-sg"
   description = "Allow HTTP/S from the internet to the ALB"
@@ -55,6 +52,17 @@ resource "aws_security_group_rule" "alb_to_backend_service" {
   security_group_id        = aws_eks_cluster.main.vpc_config[0].cluster_security_group_id
   source_security_group_id = aws_security_group.alb_sg.id
   description              = "ALB to backend service port"
+}
+
+# Allow ALB to reach frontend service port via IP targets
+resource "aws_security_group_rule" "alb_to_frontend_service" {
+  type                     = "ingress"
+  from_port                = var.frontend_service_port
+  to_port                  = var.frontend_service_port
+  protocol                 = "tcp"
+  security_group_id        = aws_eks_cluster.main.vpc_config[0].cluster_security_group_id
+  source_security_group_id = aws_security_group.alb_sg.id
+  description              = "ALB to frontend service port"
 }
 
 resource "aws_lb" "public_alb" {

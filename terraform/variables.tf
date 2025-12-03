@@ -58,3 +58,45 @@ variable "backend_service_port" {
   default     = 5000
 }
 
+variable "frontend_service_port" {
+  description = "Frontend service port for ALB IP targets"
+  type        = number
+  default     = 80
+}
+
+variable "cognito_callback_urls" {
+  description = "Allowed callback URLs for Cognito Hosted UI"
+  type        = list(string)
+  default     = ["http://localhost/"]
+}
+
+variable "cognito_logout_urls" {
+  description = "Allowed logout URLs for Cognito Hosted UI"
+  type        = list(string)
+  default     = ["http://localhost/"]
+}
+
+variable "workspaces_directory_id" {
+  description = "WorkSpaces Directory ID used to provision desktops"
+  type        = string
+  default     = ""
+}
+
+variable "workspaces_bundle_id" {
+  description = "WorkSpaces Bundle ID for default app set"
+  type        = string
+  default     = ""
+}
+
+variable "hosted_zone_name" {
+  description = "Public hosted zone domain name (managed in Route53)"
+  type        = string
+  default     = "daanwelten.nl"
+}
+
+variable "portal_subdomain" {
+  description = "Subdomain for the portal (will be ALIASed to the ALB)"
+  type        = string
+  default     = "portal"
+}
+

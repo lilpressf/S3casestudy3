@@ -21,3 +21,11 @@ spec:
         env:
         - name: AWS_REGION
           value: <AWS_REGION>
+        - name: EMPLOYEE_TABLE
+          value: innovatech-employees
+        - name: AUDIT_TABLE
+          value: innovatech-audit-logs
+        - name: COGNITO_POOL_ID
+          value: <COGNITO_POOL_ID>
+        - name: COGNITO_CLIENT_ID
+          value: <COGNITO_CLIENT_ID>
