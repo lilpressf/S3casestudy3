@@ -17,5 +17,6 @@ spec:
       containers:
         - name: frontend
           image: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/innovatech-frontend:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
