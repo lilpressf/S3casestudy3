@@ -9,6 +9,17 @@ resource "aws_dynamodb_table" "employees" {
     type = "S"
   }
 
+  attribute {
+    name = "email"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "email-index"
+    hash_key        = "email"
+    projection_type = "ALL"
+  }
+
   tags = {
     Environment = "dev"
     Project     = "cs3-innovatech"

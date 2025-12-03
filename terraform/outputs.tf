@@ -62,16 +62,6 @@ output "lbc_irsa_role_arn" {
   value       = aws_iam_role.lbc_irsa.arn
 }
 
-output "alb_dns_name" {
-  description = "Public DNS name for the ALB"
-  value       = aws_lb.public_alb.dns_name
-}
-
-output "alb_target_group_arn" {
-  description = "Target group ARN for wiring Kubernetes NodePort services"
-  value       = aws_lb_target_group.eks_nodes.arn
-}
-
 output "cognito_user_pool_id" {
   description = "Cognito User Pool ID for portal authentication"
   value       = aws_cognito_user_pool.portal.id

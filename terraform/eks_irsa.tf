@@ -31,7 +31,8 @@ resource "aws_iam_role_policy" "backend_dynamodb_policy" {
           "dynamodb:PutItem",
           "dynamodb:UpdateItem",
           "dynamodb:GetItem",
-          "dynamodb:Scan"
+          "dynamodb:Scan",
+          "dynamodb:Query"
         ],
         Resource = [
           aws_dynamodb_table.employees.arn,

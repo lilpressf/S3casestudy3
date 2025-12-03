@@ -46,12 +46,6 @@ variable "ssh_cidr" {
   sensitive   = true
 }
 
-variable "eks_nodeport" {
-  description = "NodePort exposed by your Kubernetes Service that the ALB should forward to"
-  type        = number
-  default     = 30080
-}
-
 variable "backend_service_port" {
   description = "Backend service port for ALB IP targets (used by the controller-managed ALB)"
   type        = number
@@ -74,6 +68,12 @@ variable "cognito_logout_urls" {
   description = "Allowed logout URLs for Cognito Hosted UI"
   type        = list(string)
   default     = ["http://localhost/"]
+}
+
+variable "acm_certificate_arn" {
+  description = "ACM certificate ARN for ALB HTTPS listener (ingress controller)"
+  type        = string
+  default     = ""
 }
 
 variable "workspaces_directory_id" {

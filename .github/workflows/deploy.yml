@@ -37,6 +37,8 @@ jobs:
         run: |
           echo "TF_VAR_ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}" >> $GITHUB_ENV
           echo "TF_VAR_ssh_cidr=${{ secrets.SSH_CIDR }}" >> $GITHUB_ENV
+          echo "TF_VAR_cognito_callback_urls=${{ secrets.TF_VAR_COGNITO_CALLBACK_URLS }}" >> $GITHUB_ENV
+          echo "TF_VAR_cognito_logout_urls=${{ secrets.TF_VAR_COGNITO_LOGOUT_URLS }}" >> $GITHUB_ENV
 
       # Terraform setup
       - name: Set up Terraform
@@ -164,3 +166,17 @@ jobs:
         run: |
           kubectl apply -f k8s-temp/backend/
           kubectl apply -f k8s-temp/frontend/
+
+      # Ensure new images are pulled and pods refreshed
+      - name: Rollout restart app deployments
+        run: |
+          kubectl rollout restart deployment/innovatech-frontend
+          kubectl rollout restart deployment/innovatech-backend
+
+      # Post-deploy smoke test against ingress ALB
+      - name: Smoke test /api/health
+        run: |
+          set -euo pipefail
+          HOST=$(kubectl get ingress frontend -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo "Ingress host: $HOST"
+          curl -L --max-time 20 --retry 5 --retry-delay 5 --fail "http://$HOST/api/health"

@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from boto3.dynamodb.conditions import Key
 from db import dynamodb_table
 from automation import Automation
 import os
@@ -122,7 +123,26 @@ def onboard():
     )
     workspace = automator.provision_workspace(email=data["email"])
 
+    workspace_id = workspace.get("workspace_id") if isinstance(workspace, dict) else None
     detail = {"identity": identity, "workspace": workspace}
+
+    # Persist workspace id and status for later offboarding
+    update_values = {
+        "status": "onboard_submitted",
+        "workspace_id": workspace_id,
+        "detail": detail,
+    }
+    dynamodb_table(EMP_TABLE).update_item(
+        Key={"employee_id": employee_id},
+        UpdateExpression="SET #s = :status, workspace_id = :ws, detail = :detail",
+        ExpressionAttributeNames={"#s": "status"},
+        ExpressionAttributeValues={
+            ":status": update_values["status"],
+            ":ws": update_values["workspace_id"],
+            ":detail": json.dumps(detail),
+        },
+    )
+
     write_audit("onboard", data["email"], status="submitted", detail=json.dumps(detail))
     return jsonify({"message": "Onboarding started", "employee_id": employee_id, "detail": detail}), 201
 
@@ -135,10 +155,34 @@ def offboard():
     if not email:
         return jsonify({"error": "Missing email"}), 400
 
+    # Lookup employee record by email (GSI)
+    resp = dynamodb_table(EMP_TABLE).query(
+        IndexName="email-index",
+        KeyConditionExpression=Key("email").eq(email),
+        Limit=1,
+    )
+    items = resp.get("Items", [])
+    if not items:
+        return jsonify({"error": "Employee not found"}), 404
+
+    employee = items[0]
+    workspace_id = data.get("workspace_id") or employee.get("workspace_id", "")
+
     write_audit("offboard", email, status="started")
-    ws_status = automator.terminate_workspace(data.get("workspace_id", ""))
+    ws_status = automator.terminate_workspace(workspace_id)
     identity_status = automator.disable_identity(email)
     detail = {"workspace": ws_status, "identity": identity_status}
+
+    dynamodb_table(EMP_TABLE).update_item(
+        Key={"employee_id": employee["employee_id"]},
+        UpdateExpression="SET #s = :status, last_offboard_detail = :detail",
+        ExpressionAttributeNames={"#s": "status"},
+        ExpressionAttributeValues={
+            ":status": "offboard_submitted",
+            ":detail": json.dumps(detail),
+        },
+    )
+
     write_audit("offboard", email, status="submitted", detail=json.dumps(detail))
     return jsonify({"message": "Offboarding started", "email": email, "detail": detail}), 200
 
