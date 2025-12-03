@@ -63,6 +63,7 @@ jobs:
         run: |
           echo "COGNITO_POOL_ID=$(terraform -chdir=terraform output -raw cognito_user_pool_id)" >> $GITHUB_ENV
           echo "COGNITO_CLIENT_ID=$(terraform -chdir=terraform output -raw cognito_user_pool_client_id)" >> $GITHUB_ENV
+          echo "EKS_NODE_ROLE_ARN=$(terraform -chdir=terraform output -raw eks_node_role_arn)" >> $GITHUB_ENV
 
       # Docker login AFTER ECR exists
       - name: Login to Amazon ECR
@@ -98,15 +99,25 @@ jobs:
             --region ${{ secrets.AWS_REGION }} \
             --name innovatech-eks
 
+      # ADD SSO ROLE + NODE ROLE TO EKS AUTOMATICALLY (before controller wait)
+      - name: Apply aws-auth mapping (nodes + SSO)
+        env:
+          AWS_SSO_ROLE_ARN: ${{ secrets.AWS_SSO_ROLE_ARN }}
+          EKS_NODE_ROLE_ARN: ${{ env.EKS_NODE_ROLE_ARN }}
+        run: |
+          cd backend/k8s
+          envsubst < aws-auth-template.yml > aws-auth.yml
+          kubectl apply -f aws-auth.yml
+
       # Wait for AWS Load Balancer Controller (with diagnostics and hard timeout)
       - name: Ensure AWS Load Balancer Controller Ready
         run: |
           set -euo pipefail
           NAMESPACE=kube-system
           DEPLOYMENT=aws-load-balancer-controller
-          TIMEOUT=60s
+          TIMEOUT=300s
 
-          echo "Waiting for $DEPLOYMENT (first attempt, timeout $TIMEOUT)"
+          echo "Waiting for $DEPLOYMENT rollout (timeout $TIMEOUT)"
           if timeout $TIMEOUT kubectl -n $NAMESPACE rollout status deployment/$DEPLOYMENT --timeout=$TIMEOUT; then
             exit 0
           fi
@@ -117,18 +128,10 @@ jobs:
           kubectl -n $NAMESPACE get events --sort-by=.lastTimestamp | tail -n 40 || true
           kubectl -n $NAMESPACE logs deployment/$DEPLOYMENT --tail=200 || true
 
-          echo "Restarting deployment and waiting again..."
+          echo "Restarting deployment and waiting again (rollout + pod ready check)..."
           kubectl -n $NAMESPACE rollout restart deployment/$DEPLOYMENT
-          timeout $TIMEOUT kubectl -n $NAMESPACE rollout status deployment/$DEPLOYMENT --timeout=$TIMEOUT
-
-      # ADD SSO ROLE TO EKS AUTOMATICALLY
-      - name: Apply aws-auth mapping for SSO role
-        env:
-          AWS_SSO_ROLE_ARN: ${{ secrets.AWS_SSO_ROLE_ARN }}
-        run: |
-          cd backend/k8s
-          envsubst < aws-auth-template.yml > aws-auth.yml
-          kubectl apply -f aws-auth.yml
+          timeout $TIMEOUT kubectl -n $NAMESPACE rollout status deployment/$DEPLOYMENT --timeout=$TIMEOUT || true
+          timeout $TIMEOUT kubectl -n $NAMESPACE wait --for=condition=Ready pod -l app.kubernetes.io/name=$DEPLOYMENT --timeout=$TIMEOUT
 
       # Prepare temp manifests
       - name: Prepare manifests

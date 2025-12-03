@@ -5,6 +5,11 @@ metadata:
   namespace: kube-system
 data:
   mapRoles: |
+    - rolearn: ${EKS_NODE_ROLE_ARN}
+      username: system:node:{{EC2PrivateDNSName}}
+      groups:
+        - system:bootstrappers
+        - system:nodes
     - rolearn: ${AWS_SSO_ROLE_ARN}
       username: sso-user
       groups:

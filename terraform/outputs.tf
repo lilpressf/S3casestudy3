@@ -48,6 +48,11 @@ output "audit_logs_table_name" {
   description = "DynamoDB audit logs table name"
 }
 
+output "eks_node_role_arn" {
+  description = "IAM role ARN for EKS worker nodes (for aws-auth mapping)"
+  value       = aws_iam_role.eks_node_role.arn
+}
+
 output "ecr_backend_url" {
   value = aws_ecr_repository.backend.repository_url
 }
