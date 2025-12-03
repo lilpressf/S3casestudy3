@@ -98,6 +98,11 @@ jobs:
             --region ${{ secrets.AWS_REGION }} \
             --name innovatech-eks
 
+      # Wait for AWS Load Balancer Controller
+      - name: Wait for AWS Load Balancer Controller
+        run: |
+          kubectl -n kube-system rollout status deployment/aws-load-balancer-controller --timeout=180s
+
       # ADD SSO ROLE TO EKS AUTOMATICALLY
       - name: Apply aws-auth mapping for SSO role
         env:
@@ -110,19 +115,20 @@ jobs:
       # Prepare temp manifests
       - name: Prepare manifests
         run: |
-          mkdir -p k8s-temp
-          cp backend/k8s/*.yml k8s-temp/
-          cp frontend/k8s/*.yml k8s-temp/
+          mkdir -p k8s-temp/backend k8s-temp/frontend
+          cp backend/k8s/*.yml k8s-temp/backend/
+          cp frontend/k8s/*.yml k8s-temp/frontend/
 
-          sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/backend-deployment.yml
-          sed -i "s|<AWS_REGION>|${{ secrets.AWS_REGION }}|g" k8s-temp/backend-deployment.yml
-          sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/serviceaccount.yml
-          sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/deployment.yml
-          sed -i "s|<AWS_REGION>|${{ secrets.AWS_REGION }}|g" k8s-temp/deployment.yml
-          sed -i "s|<COGNITO_POOL_ID>|${COGNITO_POOL_ID}|g" k8s-temp/backend-deployment.yml
-          sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/backend-deployment.yml
+          sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/backend/backend-deployment.yml
+          sed -i "s|<AWS_REGION>|${{ secrets.AWS_REGION }}|g" k8s-temp/backend/backend-deployment.yml
+          sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/backend/serviceaccount.yml
+          sed -i "s|<COGNITO_POOL_ID>|${COGNITO_POOL_ID}|g" k8s-temp/backend/backend-deployment.yml
+          sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/backend/backend-deployment.yml
+          sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/frontend/deployment.yml
+          sed -i "s|<AWS_REGION>|${{ secrets.AWS_REGION }}|g" k8s-temp/frontend/deployment.yml
 
       # Deploy to EKS
       - name: Apply manifests
         run: |
-          kubectl apply -f k8s-temp/
+          kubectl apply -f k8s-temp/backend/
+          kubectl apply -f k8s-temp/frontend/
