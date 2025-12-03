@@ -117,8 +117,8 @@ jobs:
           sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/backend-deployment.yml
           sed -i "s|<AWS_REGION>|${{ secrets.AWS_REGION }}|g" k8s-temp/backend-deployment.yml
           sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/serviceaccount.yml
-          sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/frontend-deployment.yml
-          sed -i "s|<AWS_REGION>|${{ secrets.AWS_REGION }}|g" k8s-temp/frontend-deployment.yml
+          sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/deployment.yml
+          sed -i "s|<AWS_REGION>|${{ secrets.AWS_REGION }}|g" k8s-temp/deployment.yml
           sed -i "s|<COGNITO_POOL_ID>|${COGNITO_POOL_ID}|g" k8s-temp/backend-deployment.yml
           sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/backend-deployment.yml
 
