@@ -179,19 +179,11 @@
       </div>
     </section>
   </main>
-  <footer>Requests are sent to /api/* on the same host. Include your Bearer token after Cognito login.</footer>
+  <footer>Requests are sent to /api/* on the same host. Authentication is handled by Cognito via the load balancer.</footer>
 
   <script>
-    const tokenInput = document.createElement('input');
-    tokenInput.id = 'token';
-    tokenInput.placeholder = 'Paste Bearer token';
-    tokenInput.style = 'width:100%;padding:10px 12px;border-radius:8px;border:1px solid #1f2937;background:#0b1224;color:#e2e8f0;margin-bottom:8px;';
-    document.querySelector('footer').prepend(tokenInput);
-
     async function api(path, payload) {
-      const token = document.getElementById('token').value;
       const headers = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
       const res = await fetch('/api' + path, {
         method: 'POST',
         headers,

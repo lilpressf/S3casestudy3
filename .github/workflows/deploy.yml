@@ -63,6 +63,7 @@ jobs:
         run: |
           echo "COGNITO_POOL_ID=$(terraform -chdir=terraform output -raw cognito_user_pool_id)" >> $GITHUB_ENV
           echo "COGNITO_CLIENT_ID=$(terraform -chdir=terraform output -raw cognito_user_pool_client_id)" >> $GITHUB_ENV
+          echo "COGNITO_POOL_DOMAIN=$(terraform -chdir=terraform output -raw cognito_user_pool_domain)" >> $GITHUB_ENV
           echo "EKS_NODE_ROLE_ARN=$(terraform -chdir=terraform output -raw eks_node_role_arn)" >> $GITHUB_ENV
 
       # Docker login AFTER ECR exists
@@ -147,6 +148,16 @@ jobs:
           sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/backend/backend-deployment.yml
           sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/frontend/deployment.yml
           sed -i "s|<AWS_REGION>|${{ secrets.AWS_REGION }}|g" k8s-temp/frontend/deployment.yml
+          sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/backend/backend-ingress.yml
+          sed -i "s|<AWS_REGION>|${{ secrets.AWS_REGION }}|g" k8s-temp/backend/backend-ingress.yml
+          sed -i "s|<COGNITO_POOL_ID>|${COGNITO_POOL_ID}|g" k8s-temp/backend/backend-ingress.yml
+          sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/backend/backend-ingress.yml
+          sed -i "s|<COGNITO_POOL_DOMAIN>|${COGNITO_POOL_DOMAIN}|g" k8s-temp/backend/backend-ingress.yml
+          sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/frontend/ingress.yml
+          sed -i "s|<AWS_REGION>|${{ secrets.AWS_REGION }}|g" k8s-temp/frontend/ingress.yml
+          sed -i "s|<COGNITO_POOL_ID>|${COGNITO_POOL_ID}|g" k8s-temp/frontend/ingress.yml
+          sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/frontend/ingress.yml
+          sed -i "s|<COGNITO_POOL_DOMAIN>|${COGNITO_POOL_DOMAIN}|g" k8s-temp/frontend/ingress.yml
 
       # Deploy to EKS
       - name: Apply manifests

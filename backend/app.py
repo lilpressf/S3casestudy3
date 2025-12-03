@@ -40,10 +40,19 @@ def get_jwks():
     return json.loads(body.decode("utf-8"))
 
 
-def verify_token(auth_header: str):
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise ValueError("Missing or invalid Authorization header")
-    token = auth_header.split(" ", 1)[1]
+def extract_token():
+    """Extract JWT from Authorization header or ALB OIDC header."""
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        return auth_header.split(" ", 1)[1]
+    # ALB OIDC authentication injects the token in x-amzn-oidc-data
+    alb_oidc = request.headers.get("x-amzn-oidc-data")
+    if alb_oidc:
+        return alb_oidc
+    raise ValueError("Missing or invalid Authorization header")
+
+
+def verify_token(token: str):
     jwks = get_jwks()
     try:
         unverified = jwt.get_unverified_header(token)
@@ -67,9 +76,9 @@ def require_auth(fn):
     def wrapper(*args, **kwargs):
         if not COGNITO_POOL_ID or not COGNITO_CLIENT_ID:
             return jsonify({"error": "Auth not configured"}), 500
-        auth = request.headers.get("Authorization")
         try:
-            claims = verify_token(auth)
+            token = extract_token()
+            claims = verify_token(token)
             request.claims = claims
         except ValueError as err:
             return jsonify({"error": str(err)}), 401
