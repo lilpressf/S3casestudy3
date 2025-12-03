@@ -52,3 +52,9 @@ variable "eks_nodeport" {
   default     = 30080
 }
 
+variable "backend_service_port" {
+  description = "Backend service port for ALB IP targets (used by the controller-managed ALB)"
+  type        = number
+  default     = 5000
+}
+

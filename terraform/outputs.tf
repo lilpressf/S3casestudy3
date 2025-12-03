@@ -52,6 +52,11 @@ output "ecr_backend_url" {
   value = aws_ecr_repository.backend.repository_url
 }
 
+output "lbc_irsa_role_arn" {
+  description = "IAM role ARN for the AWS Load Balancer Controller service account"
+  value       = aws_iam_role.lbc_irsa.arn
+}
+
 output "alb_dns_name" {
   description = "Public DNS name for the ALB"
   value       = aws_lb.public_alb.dns_name

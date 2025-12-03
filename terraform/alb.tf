@@ -46,6 +46,17 @@ resource "aws_security_group_rule" "alb_to_nodes" {
   description              = "ALB to EKS nodeports"
 }
 
+# Allow ALB to reach backend service port when using IP targets via the controller-managed ALB
+resource "aws_security_group_rule" "alb_to_backend_service" {
+  type                     = "ingress"
+  from_port                = var.backend_service_port
+  to_port                  = var.backend_service_port
+  protocol                 = "tcp"
+  security_group_id        = aws_eks_cluster.main.vpc_config[0].cluster_security_group_id
+  source_security_group_id = aws_security_group.alb_sg.id
+  description              = "ALB to backend service port"
+}
+
 resource "aws_lb" "public_alb" {
   name               = "eks-public-alb"
   internal           = false
