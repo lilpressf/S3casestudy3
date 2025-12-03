@@ -37,8 +37,12 @@ jobs:
         run: |
           echo "TF_VAR_ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}" >> $GITHUB_ENV
           echo "TF_VAR_ssh_cidr=${{ secrets.SSH_CIDR }}" >> $GITHUB_ENV
-          echo "TF_VAR_cognito_callback_urls=${{ secrets.TF_VAR_COGNITO_CALLBACK_URLS }}" >> $GITHUB_ENV
-          echo "TF_VAR_cognito_logout_urls=${{ secrets.TF_VAR_COGNITO_LOGOUT_URLS }}" >> $GITHUB_ENV
+          CALLBACK='${{ secrets.TF_VAR_COGNITO_CALLBACK_URLS }}'
+          LOGOUT='${{ secrets.TF_VAR_COGNITO_LOGOUT_URLS }}'
+          if [ -z "$CALLBACK" ]; then CALLBACK='["http://localhost/"]'; fi
+          if [ -z "$LOGOUT" ]; then LOGOUT='["http://localhost/"]'; fi
+          echo "TF_VAR_cognito_callback_urls=$CALLBACK" >> $GITHUB_ENV
+          echo "TF_VAR_cognito_logout_urls=$LOGOUT" >> $GITHUB_ENV
 
       # Terraform setup
       - name: Set up Terraform
