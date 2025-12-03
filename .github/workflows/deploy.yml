@@ -98,11 +98,27 @@ jobs:
             --region ${{ secrets.AWS_REGION }} \
             --name innovatech-eks
 
-      # Wait for AWS Load Balancer Controller
-      - name: Wait for AWS Load Balancer Controller
+      # Wait for AWS Load Balancer Controller (with diagnostics and retry)
+      - name: Ensure AWS Load Balancer Controller Ready
         run: |
-          # Allow extra time for the controller to come up after Helm install
-          kubectl -n kube-system rollout status deployment/aws-load-balancer-controller --timeout=600s
+          set -euo pipefail
+          NAMESPACE=kube-system
+          DEPLOYMENT=aws-load-balancer-controller
+          TIMEOUT=120s
+
+          echo "Waiting for $DEPLOYMENT (first attempt)"
+          if kubectl -n $NAMESPACE rollout status deployment/$DEPLOYMENT --timeout=$TIMEOUT; then
+            exit 0
+          fi
+
+          echo "Controller not ready on first attempt; collecting diagnostics..."
+          kubectl -n $NAMESPACE get pods -l app.kubernetes.io/name=$DEPLOYMENT -o wide || true
+          kubectl -n $NAMESPACE describe deployment/$DEPLOYMENT || true
+          kubectl -n $NAMESPACE logs deployment/$DEPLOYMENT --tail=200 || true
+
+          echo "Restarting deployment and waiting again..."
+          kubectl -n $NAMESPACE rollout restart deployment/$DEPLOYMENT
+          kubectl -n $NAMESPACE rollout status deployment/$DEPLOYMENT --timeout=$TIMEOUT
 
       # ADD SSO ROLE TO EKS AUTOMATICALLY
       - name: Apply aws-auth mapping for SSO role
