@@ -51,3 +51,13 @@ output "audit_logs_table_name" {
 output "ecr_backend_url" {
   value = aws_ecr_repository.backend.repository_url
 }
+
+output "alb_dns_name" {
+  description = "Public DNS name for the ALB"
+  value       = aws_lb.public_alb.dns_name
+}
+
+output "alb_target_group_arn" {
+  description = "Target group ARN for wiring Kubernetes NodePort services"
+  value       = aws_lb_target_group.eks_nodes.arn
+}

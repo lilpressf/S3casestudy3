@@ -46,3 +46,9 @@ variable "ssh_cidr" {
   sensitive   = true
 }
 
+variable "eks_nodeport" {
+  description = "NodePort exposed by your Kubernetes Service that the ALB should forward to"
+  type        = number
+  default     = 30080
+}
+
