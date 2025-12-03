@@ -49,7 +49,7 @@ jobs:
         run: terraform init -reconfigure
         working-directory: ./terraform
 
-      # Delete Nodegroups FIRST (otherwise destroy fails)
+      # Delete Nodegroups FIRST
       - name: Delete EKS Nodegroups (if any)
         run: |
           echo "Checking for existing nodegroups..."
@@ -81,7 +81,7 @@ jobs:
         run: terraform destroy -auto-approve || echo "Nothing to destroy."
         working-directory: ./terraform
 
-      # Terraform plan/apply (THIS CREATES ECR BEFORE DOCKER BUILD)
+      # Terraform plan/apply (ECR created here)
       - name: Terraform Plan
         run: terraform plan -out=tfplan
         working-directory: ./terraform
@@ -119,15 +119,38 @@ jobs:
             --region ${{ secrets.AWS_REGION }} \
             --name innovatech-eks
 
+      # ADD SSO ROLE TO EKS AUTOMATICALLY
+      - name: Grant EKS access to SSO role
+        env:
+          AWS_SSO_ROLE_ARN: ${{ secrets.AWS_SSO_ROLE_ARN }}
+        run: |
+          echo "Patching aws-auth to allow SSO role..."
+
+          cat <<EOF > aws-auth.yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-auth
+  namespace: kube-system
+data:
+  mapRoles: |
+    - rolearn: ${AWS_SSO_ROLE_ARN}
+      username: sso-user
+      groups:
+        - system:masters
+EOF
+
+          kubectl apply -f aws-auth.yml
+
       # Prepare temp manifests
       - name: Prepare manifests
         run: |
           mkdir -p k8s-temp
           cp backend/k8s/*.yml k8s-temp/
 
-          sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/serviceaccount.yml
           sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/backend-deployment.yml
           sed -i "s|<AWS_REGION>|${{ secrets.AWS_REGION }}|g" k8s-temp/backend-deployment.yml
+          sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s-temp/serviceaccount.yml
 
       # Deploy to EKS
       - name: Apply manifests
