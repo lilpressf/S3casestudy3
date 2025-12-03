@@ -19,6 +19,15 @@ resource "aws_eks_cluster" "main" {
     Project     = "cs3-innovatech"
   }
 
+  # Enable control plane logging for better observability and auditability
+  enabled_cluster_log_types = [
+    "api",
+    "audit",
+    "authenticator",
+    "controllerManager",
+    "scheduler"
+  ]
+
   depends_on = [
     aws_iam_role_policy_attachment.eks_cluster_policy,
   ]

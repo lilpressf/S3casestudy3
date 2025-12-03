@@ -46,6 +46,7 @@ resource "helm_release" "aws_load_balancer_controller" {
 
   depends_on = [
     aws_eks_cluster.main,
-    aws_iam_role_policy.lbc_inline
+    aws_iam_role_policy.lbc_inline,
+    aws_eks_node_group.default
   ]
 }
