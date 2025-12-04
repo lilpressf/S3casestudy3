@@ -10,7 +10,8 @@ data:
       groups:
         - system:bootstrappers
         - system:nodes
-    - rolearn: ${AWS_SSO_ROLE_ARN}
-      username: sso-user
+  mapUsers: |
+    - userarn: ${AWS_SSO_ROLE_ARN}
+      username: admin
       groups:
         - system:masters
