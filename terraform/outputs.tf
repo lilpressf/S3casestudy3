@@ -1,98 +1,64 @@
-output "vpc_id" {
-  value       = aws_vpc.main.id
-  description = "VPC ID"
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+  default     = "eu-central-1"
 }
 
-output "public_subnet_ids" {
-  value       = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-  description = "Public subnet IDs"
+variable "vpc_cidr" {
+  description = "CIDR block for the VPC"
+  type        = string
+  default     = "10.0.0.0/16"
 }
 
-output "private_subnet_ids" {
-  value       = [aws_subnet.private_a.id, aws_subnet.private_b.id]
-  description = "Private subnet IDs"
+variable "public_subnet_a_cidr" {
+  description = "CIDR block for public subnet A"
+  type        = string
+  default     = "10.0.1.0/24"
 }
 
-output "eks_cluster_name" {
-  value       = aws_eks_cluster.main.name
-  description = "EKS cluster name"
+variable "public_subnet_b_cidr" {
+  description = "CIDR block for public subnet B"
+  type        = string
+  default     = "10.0.2.0/24"
 }
 
-output "eks_cluster_endpoint" {
-  value       = aws_eks_cluster.main.endpoint
-  description = "EKS cluster API server endpoint"
+variable "private_subnet_a_cidr" {
+  description = "CIDR block for private subnet A"
+  type        = string
+  default     = "10.0.3.0/24"
 }
 
-output "eks_cluster_certificate_authority" {
-  value       = aws_eks_cluster.main.certificate_authority[0].data
-  description = "EKS cluster CA data"
+variable "private_subnet_b_cidr" {
+  description = "CIDR block for private subnet B"
+  type        = string
+  default     = "10.0.4.0/24"
 }
 
-output "eks_node_group_name" {
-  value       = aws_eks_node_group.default.node_group_name
-  description = "EKS node group name"
+variable "ssh_public_key" {
+  description = "SSH public key contents"
+  type        = string
+  sensitive   = true
 }
 
-output "employees_table_name" {
-  value       = aws_dynamodb_table.employees.name
-  description = "DynamoDB employees table name"
+variable "ssh_cidr" {
+  description = "CIDR block allowed SSH access"
+  type        = string
 }
 
-output "devices_table_name" {
-  value       = aws_dynamodb_table.devices.name
-  description = "DynamoDB devices table name"
+variable "acm_certificate_arn" {
+  description = "ACM certificate ARN for ALB"
+  type        = string
+  default     = ""
 }
 
-output "audit_logs_table_name" {
-  value       = aws_dynamodb_table.audit_logs.name
-  description = "DynamoDB audit logs table name"
+variable "workspaces_directory_id" {
+  description = "AWS WorkSpaces Directory ID"
+  type        = string
+  default     = ""
 }
 
-output "eks_node_role_arn" {
-  description = "IAM role ARN for EKS worker nodes (for aws-auth mapping)"
-  value       = aws_iam_role.eks_node_role.arn
+variable "workspaces_bundle_id" {
+  description = "AWS WorkSpaces Bundle ID"
+  type        = string
+  default     = ""
 }
-
-output "ecr_backend_url" {
-  value = aws_ecr_repository.backend.repository_url
-}
-
-output "lbc_irsa_role_arn" {
-  description = "IAM role ARN for the AWS Load Balancer Controller service account"
-  value       = aws_iam_role.lbc_irsa.arn
-}
-
-output "backend_irsa_role_arn" {
-  description = "IAM role ARN for the backend IRSA service account"
-  value       = aws_iam_role.backend_irsa.arn
-}
-
-output "cognito_user_pool_id" {
-  description = "Cognito User Pool ID for portal authentication"
-  value       = aws_cognito_user_pool.portal.id
-}
-
-output "cognito_user_pool_client_id" {
-  description = "Cognito app client ID"
-  value       = aws_cognito_user_pool_client.portal.id
-}
-
-output "cognito_issuer" {
-  description = "Cognito OIDC issuer URL"
-  value       = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.portal.id}"
-}
-
-output "cognito_user_pool_domain" {
-  description = "Cognito user pool domain prefix"
-  value       = aws_cognito_user_pool_domain.portal.domain
-}
-
-output "acm_certificate_arn" {
-  value = aws_acm_certificate.portal.arn
-}
-
-output "cognito_user_pool_arn" {
-  description = "Cognito User Pool ARN for ALB authentication"
-  value       = aws_cognito_user_pool.portal.arn
-}
-

@@ -35,45 +35,30 @@ variable "private_subnet_b_cidr" {
 }
 
 variable "ssh_public_key" {
-  description = "Contents of your SSH public key"
+  description = "SSH public key contents"
   type        = string
   sensitive   = true
 }
 
 variable "ssh_cidr" {
-  description = "CIDR block allowed to SSH into webservers"
+  description = "CIDR block allowed SSH access"
   type        = string
-  sensitive   = true
 }
-
-variable "backend_service_port" {
-  description = "Backend service port for ALB IP targets (used by the controller-managed ALB)"
-  type        = number
-  default     = 5000
-}
-
-variable "frontend_service_port" {
-  description = "Frontend service port for ALB IP targets"
-  type        = number
-  default     = 80
-}
-
 
 variable "acm_certificate_arn" {
-  description = "ACM certificate ARN for ALB HTTPS listener (ingress controller)"
+  description = "ACM certificate ARN for ALB"
   type        = string
   default     = ""
 }
 
 variable "workspaces_directory_id" {
-  description = "WorkSpaces Directory ID used to provision desktops"
+  description = "AWS WorkSpaces Directory ID"
   type        = string
   default     = ""
 }
 
 variable "workspaces_bundle_id" {
-  description = "WorkSpaces Bundle ID for default app set"
+  description = "AWS WorkSpaces Bundle ID"
   type        = string
   default     = ""
 }
-
