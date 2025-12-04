@@ -58,17 +58,6 @@ variable "frontend_service_port" {
   default     = 80
 }
 
-variable "cognito_callback_urls" {
-  description = "Allowed callback URLs for Cognito Hosted UI"
-  type        = list(string)
-  default     = ["http://localhost/"]
-}
-
-variable "cognito_logout_urls" {
-  description = "Allowed logout URLs for Cognito Hosted UI"
-  type        = list(string)
-  default     = ["http://localhost/"]
-}
 
 variable "acm_certificate_arn" {
   description = "ACM certificate ARN for ALB HTTPS listener (ingress controller)"

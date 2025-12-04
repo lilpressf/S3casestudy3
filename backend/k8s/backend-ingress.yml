@@ -7,18 +7,14 @@ metadata:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80,"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: "<ACM_CERT_ARN>"
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
     alb.ingress.kubernetes.io/group.name: innovatech
-    alb.ingress.kubernetes.io/healthcheck-path: /api/health
-    alb.ingress.kubernetes.io/auth-type: cognito
-    alb.ingress.kubernetes.io/auth-on-unauthenticated-request: authenticate
-    alb.ingress.kubernetes.io/auth-scope: openid
-    alb.ingress.kubernetes.io/auth-session-cookie: awsalb-auth
-    alb.ingress.kubernetes.io/auth-session-timeout: "604800"
-    alb.ingress.kubernetes.io/auth-idp-cognito: '{"UserPoolArn":"arn:aws:cognito-idp:<AWS_REGION>:<AWS_ACCOUNT_ID>:userpool/<COGNITO_POOL_ID>","UserPoolClientId":"<COGNITO_CLIENT_ID>","UserPoolDomain":"<COGNITO_POOL_DOMAIN>"}'
 spec:
   rules:
-    - http:
+    - host: portal.daanwelten.nl
+      http:
         paths:
           - path: /api
             pathType: Prefix

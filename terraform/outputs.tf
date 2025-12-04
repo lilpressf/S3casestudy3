@@ -91,3 +91,7 @@ output "cognito_user_pool_domain" {
   description = "Cognito user pool domain prefix"
   value       = aws_cognito_user_pool_domain.portal.domain
 }
+
+output "acm_certificate_arn" {
+  value = aws_acm_certificate.portal.arn
+}

@@ -26,10 +26,20 @@ resource "aws_cognito_user_pool_client" "portal" {
   allowed_oauth_flows                  = ["code"]
   allowed_oauth_scopes                 = ["email", "openid", "profile"]
   allowed_oauth_flows_user_pool_client = true
-  callback_urls                        = var.cognito_callback_urls
-  logout_urls                          = var.cognito_logout_urls
-  supported_identity_providers         = ["COGNITO"]
-  generate_secret                      = false
+
+  # stable domain-based URLs
+  callback_urls = [
+    "https://portal.daanwelten.nl/oauth2/idpresponse",
+    "http://localhost/"                   # keep for local testing
+  ]
+
+  logout_urls = [
+    "https://portal.daanwelten.nl/logout",
+    "http://localhost/"                   # keep for local testing
+  ]
+
+  supported_identity_providers = ["COGNITO"]
+  generate_secret              = false
 }
 
 resource "aws_cognito_user_pool_domain" "portal" {
