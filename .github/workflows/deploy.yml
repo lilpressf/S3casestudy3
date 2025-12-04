@@ -182,21 +182,33 @@ jobs:
           cp backend/k8s/*.yml k8s-temp/backend/
           cp frontend/k8s/*.yml k8s-temp/frontend/
 
-          # Frontend Ingress
-          sed -i "s|<AWS_REGION>|${AWS_REGION}|g" k8s-temp/frontend/ingress.yml
-          sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/frontend/ingress.yml
-          sed -i "s|<COGNITO_POOL_ID>|${COGNITO_POOL_ID}|g" k8s-temp/frontend/ingress.yml
-          sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/frontend/ingress.yml
-          sed -i "s|<COGNITO_POOL_DOMAIN>|${COGNITO_POOL_DOMAIN}|g" k8s-temp/frontend/ingress.yml
-          sed -i "s|<ACM_CERT_ARN>|${ACM_CERT_ARN}|g" k8s-temp/frontend/ingress.yml
+          ### BACKEND Deployment (Replace ECR + ENV Vars)
+          sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/backend/backend-deployment.yml
+          sed -i "s|<AWS_REGION>|${AWS_REGION}|g" k8s-temp/backend/backend-deployment.yml
+          sed -i "s|<COGNITO_POOL_ID>|${COGNITO_POOL_ID}|g" k8s-temp/backend/backend-deployment.yml
+          sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/backend/backend-deployment.yml
+          sed -i "s|<WORKSPACES_DIRECTORY_ID>|${WORKSPACES_DIRECTORY_ID}|g" k8s-temp/backend/backend-deployment.yml
+          sed -i "s|<WORKSPACES_BUNDLE_ID>|${WORKSPACES_BUNDLE_ID}|g" k8s-temp/backend/backend-deployment.yml
 
-          # Backend Ingress
+          ### BACKEND Ingress
           sed -i "s|<AWS_REGION>|${AWS_REGION}|g" k8s-temp/backend/backend-ingress.yml
           sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/backend/backend-ingress.yml
           sed -i "s|<COGNITO_POOL_ID>|${COGNITO_POOL_ID}|g" k8s-temp/backend/backend-ingress.yml
           sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/backend/backend-ingress.yml
           sed -i "s|<COGNITO_POOL_DOMAIN>|${COGNITO_POOL_DOMAIN}|g" k8s-temp/backend/backend-ingress.yml
           sed -i "s|<ACM_CERT_ARN>|${ACM_CERT_ARN}|g" k8s-temp/backend/backend-ingress.yml
+
+          ### FRONTEND Deployment (Replace ECR)
+          sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/frontend/deployment.yml
+          sed -i "s|<AWS_REGION>|${AWS_REGION}|g" k8s-temp/frontend/deployment.yml
+
+          ### FRONTEND Ingress
+          sed -i "s|<AWS_REGION>|${AWS_REGION}|g" k8s-temp/frontend/ingress.yml
+          sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/frontend/ingress.yml
+          sed -i "s|<COGNITO_POOL_ID>|${COGNITO_POOL_ID}|g" k8s-temp/frontend/ingress.yml
+          sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/frontend/ingress.yml
+          sed -i "s|<COGNITO_POOL_DOMAIN>|${COGNITO_POOL_DOMAIN}|g" k8s-temp/frontend/ingress.yml
+          sed -i "s|<ACM_CERT_ARN>|${ACM_CERT_ARN}|g" k8s-temp/frontend/ingress.yml
 
       - name: Apply backend
         run: kubectl apply -f k8s-temp/backend/
