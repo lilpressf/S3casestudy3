@@ -7,29 +7,22 @@ metadata:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    
-    # HTTPS support
+
+    # HTTPS
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80,"HTTPS":443}]'
     alb.ingress.kubernetes.io/certificate-arn: "<ACM_CERT_ARN>"
-
-    # Redirect HTTP → HTTPS
     alb.ingress.kubernetes.io/ssl-redirect: "443"
 
     # ALB group
     alb.ingress.kubernetes.io/group.name: innovatech
 
-    # Cognito Auth
+    # Cognito auth (MUST be SINGLE LINE JSON)
     alb.ingress.kubernetes.io/auth-type: cognito
     alb.ingress.kubernetes.io/auth-on-unauthenticated-request: authenticate
     alb.ingress.kubernetes.io/auth-scope: openid
     alb.ingress.kubernetes.io/auth-session-cookie: awsalb-auth
     alb.ingress.kubernetes.io/auth-session-timeout: "604800"
-    alb.ingress.kubernetes.io/auth-idp-cognito: >
-      {
-        "UserPoolArn":"arn:aws:cognito-idp:<AWS_REGION>:<AWS_ACCOUNT_ID>:userpool/<COGNITO_POOL_ID>",
-        "UserPoolClientId":"<COGNITO_CLIENT_ID>",
-        "UserPoolDomain":"<COGNITO_POOL_DOMAIN>"
-      }
+    alb.ingress.kubernetes.io/auth-idp-cognito: "{\"UserPoolArn\":\"arn:aws:cognito-idp:<AWS_REGION>:<AWS_ACCOUNT_ID>:userpool/<COGNITO_POOL_ID>\",\"UserPoolClientId\":\"<COGNITO_CLIENT_ID>\",\"UserPoolDomain\":\"<COGNITO_POOL_DOMAIN>\"}"
 
 spec:
   rules:
