@@ -9,23 +9,23 @@ env:
 
 jobs:
 
+  # 1. TERRAFORM INFRASTRUCTURE #
   infra:
-    name: Terraform & Cluster Bootstrap
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
 
     outputs:
-      eks_cluster_name: ${{ steps.tf.outputs.eks_cluster_name }}
-      eks_node_role_arn: ${{ steps.tf.outputs.eks_node_role_arn }}
-      eks_node_group_name: ${{ steps.tf.outputs.eks_node_group_name }}
-      cognito_user_pool_id: ${{ steps.tf.outputs.cognito_user_pool_id }}
-      cognito_user_pool_client_id: ${{ steps.tf.outputs.cognito_user_pool_client_id }}
-      cognito_user_pool_client_secret: ${{ steps.tf.outputs.cognito_user_pool_client_secret }}
-      cognito_user_pool_domain: ${{ steps.tf.outputs.cognito_user_pool_domain }}
-      cognito_user_pool_arn: ${{ steps.tf.outputs.cognito_user_pool_arn }}
-      acm_certificate_arn: ${{ steps.tf.outputs.acm_certificate_arn }}
+      eks_cluster_name: ${{ steps.tf_out.outputs.eks_cluster_name }}
+      eks_node_role_arn: ${{ steps.tf_out.outputs.eks_node_role_arn }}
+      eks_node_group_name: ${{ steps.tf_out.outputs.eks_node_group_name }}
+      cognito_user_pool_id: ${{ steps.tf_out.outputs.cognito_user_pool_id }}
+      cognito_user_pool_client_id: ${{ steps.tf_out.outputs.cognito_user_pool_client_id }}
+      cognito_user_pool_client_secret: ${{ steps.tf_out.outputs.cognito_user_pool_client_secret }}
+      cognito_user_pool_domain: ${{ steps.tf_out.outputs.cognito_user_pool_domain }}
+      cognito_user_pool_arn: ${{ steps.tf_out.outputs.cognito_user_pool_arn }}
+      acm_certificate_arn: ${{ steps.tf_out.outputs.acm_certificate_arn }}
 
     steps:
       - uses: actions/checkout@v4
@@ -34,6 +34,11 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Export TF Vars
+        run: |
+          echo "TF_VAR_ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}" >> $GITHUB_ENV
+          echo "TF_VAR_ssh_cidr=${{ secrets.SSH_CIDR }}" >> $GITHUB_ENV
 
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -47,8 +52,8 @@ jobs:
         working-directory: terraform
         run: terraform apply -auto-approve
 
-      - name: Collect Outputs
-        id: tf
+      - name: Collect Terraform Outputs
+        id: tf_out
         working-directory: terraform
         run: |
           echo "eks_cluster_name=$(terraform output -raw eks_cluster_name)" >> $GITHUB_OUTPUT
@@ -61,6 +66,8 @@ jobs:
           echo "cognito_user_pool_arn=$(terraform output -raw cognito_user_pool_arn)" >> $GITHUB_OUTPUT
           echo "acm_certificate_arn=$(terraform output -raw acm_certificate_arn)" >> $GITHUB_OUTPUT
 
+
+  # 2. BUILD + PUSH DOCKER IMAGES       #
   build_and_push:
     runs-on: ubuntu-latest
     needs: infra
@@ -75,18 +82,19 @@ jobs:
 
       - uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build Images
+      - name: Build Docker images
         run: |
           docker build -t innovatech-backend ./backend
           docker build -t innovatech-frontend ./frontend
 
-      - name: Push Images
+      - name: Push Docker images
         run: |
           docker tag innovatech-backend $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-backend:latest
           docker tag innovatech-frontend $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-frontend:latest
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-backend:latest
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-frontend:latest
 
+  # 3. DEPLOY TO EKS                    
   deploy_app:
     runs-on: ubuntu-latest
     needs: [infra, build_and_push]
@@ -112,8 +120,8 @@ jobs:
 
       - name: Install kubectl
         run: |
-          VER=$(curl -L -s https://dl.k8s.io/release/stable.txt)
-          curl -LO "https://dl.k8s.io/release/${VER}/bin/linux/amd64/kubectl"
+          ver=$(curl -sL https://dl.k8s.io/release/stable.txt)
+          curl -LO https://dl.k8s.io/release/$ver/bin/linux/amd64/kubectl
           sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 
       - name: Configure kubeconfig
@@ -123,25 +131,30 @@ jobs:
             --name "$EKS_CLUSTER_NAME" \
             --force
 
-      - name: Delete Old Ingresses (avoid stuck finalizers)
+      - name: Delete old ingresses (prevent finalizer hang)
         run: |
           kubectl delete ingress frontend --ignore-not-found
           kubectl delete ingress backend --ignore-not-found
 
-      - name: Template manifests
+      - name: Template Kubernetes manifests
         run: |
           mkdir -p k8s-temp/backend k8s-temp/frontend
 
           cp backend/k8s/*.yml k8s-temp/backend/
           cp frontend/k8s/*.yml k8s-temp/frontend/
 
+          # Replace values in frontend ingress
           sed -i "s|<COGNITO_POOL_ARN>|${COGNITO_POOL_ARN}|g" k8s-temp/frontend/ingress.yml
           sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/frontend/ingress.yml
           sed -i "s|<COGNITO_CLIENT_SECRET>|${COGNITO_CLIENT_SECRET}|g" k8s-temp/frontend/ingress.yml
           sed -i "s|<COGNITO_POOL_DOMAIN>|${COGNITO_POOL_DOMAIN}|g" k8s-temp/frontend/ingress.yml
           sed -i "s|<ACM_CERT_ARN>|${ACM_CERT_ARN}|g" k8s-temp/frontend/ingress.yml
 
-      - name: Apply Manifests
+          # Replace region/account in deployments
+          sed -i "s|<AWS_REGION>|${AWS_REGION}|g" k8s-temp/frontend/deployment.yml
+          sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/frontend/deployment.yml
+
+      - name: Apply manifests
         run: |
           kubectl apply -f k8s-temp/backend/
           kubectl apply -f k8s-temp/frontend/
@@ -152,7 +165,7 @@ jobs:
           for i in {1..40}; do
             H=$(kubectl get ingress frontend -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
             if [ -n "$H" ]; then
-              echo "ALB_HOST=$H" >> $GITHUB_ENV
+              echo "ALB_HOST=$H" >> "$GITHUB_ENV"
               exit 0
             fi
             echo "Waiting for ALB... ($i/40)"
