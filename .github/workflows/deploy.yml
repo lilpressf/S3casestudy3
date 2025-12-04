@@ -8,6 +8,7 @@ env:
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
 
 jobs:
+
   infra:
     name: Terraform & Cluster Bootstrap
     runs-on: ubuntu-latest
@@ -80,14 +81,17 @@ jobs:
 
       - name: Install kubectl
         run: |
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          VER=$(curl -L -s https://dl.k8s.io/release/stable.txt)
+          curl -LO "https://dl.k8s.io/release/${VER}/bin/linux/amd64/kubectl"
           sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 
       - name: Configure kubeconfig
         run: |
-          aws eks update-kubeconfig --region "$AWS_REGION" --name "${{ steps.tf_outputs.outputs.eks_cluster_name }}"
+          aws eks update-kubeconfig \
+            --region "$AWS_REGION" \
+            --name "${{ steps.tf_outputs.outputs.eks_cluster_name }}"
 
-      - name: Apply aws-auth ConfigMap (Nodes + optional SSO)
+      - name: Apply aws-auth ConfigMap
         env:
           AWS_SSO_ROLE_ARN: ${{ secrets.AWS_SSO_ROLE_ARN }}
           EKS_NODE_ROLE_ARN: ${{ steps.tf_outputs.outputs.eks_node_role_arn }}
@@ -97,12 +101,10 @@ jobs:
           kubectl apply -f aws-auth.yml
 
       - name: Wait for worker nodes Ready
-        run: |
-          kubectl wait --for=condition=Ready node --all --timeout=600s
+        run: kubectl wait --for=condition=Ready node --all --timeout=600s
 
       - name: Wait for AWS Load Balancer Controller
-        run: |
-          kubectl -n kube-system rollout status deployment/aws-load-balancer-controller --timeout=600s
+        run: kubectl -n kube-system rollout status deployment/aws-load-balancer-controller --timeout=600s
 
 
   build_and_push:
@@ -137,7 +139,6 @@ jobs:
         run: |
           docker tag innovatech-backend "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/innovatech-backend:latest"
           docker tag innovatech-frontend "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/innovatech-frontend:latest"
-
           docker push "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/innovatech-backend:latest"
           docker push "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/innovatech-frontend:latest"
 
@@ -156,6 +157,8 @@ jobs:
       COGNITO_CLIENT_ID: ${{ needs.infra.outputs.cognito_user_pool_client_id }}
       COGNITO_POOL_DOMAIN: ${{ needs.infra.outputs.cognito_user_pool_domain }}
       ACM_CERT_ARN: ${{ needs.infra.outputs.acm_certificate_arn }}
+      WORKSPACES_DIRECTORY_ID: ${{ secrets.WORKSPACES_DIRECTORY_ID }}
+      WORKSPACES_BUNDLE_ID: ${{ secrets.WORKSPACES_BUNDLE_ID }}
 
     steps:
       - uses: actions/checkout@v4
@@ -167,9 +170,9 @@ jobs:
 
       - name: Install kubectl
         run: |
-           VER=$(curl -L -s https://dl.k8s.io/release/stable.txt)
-           curl -LO "https://dl.k8s.io/release/${VER}/bin/linux/amd64/kubectl"
-           sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+          VER=$(curl -L -s https://dl.k8s.io/release/stable.txt)
+          curl -LO "https://dl.k8s.io/release/${VER}/bin/linux/amd64/kubectl"
+          sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 
       - name: Configure kubeconfig
         run: |
@@ -180,12 +183,17 @@ jobs:
       - name: Template manifests
         run: |
           mkdir -p k8s-temp/backend k8s-temp/frontend
+
+          # Copy all manifests
           cp backend/k8s/*.yml k8s-temp/backend/
           cp frontend/k8s/*.yml k8s-temp/frontend/
 
           #
-          # FRONTEND Ingress
+          # FRONTEND Deployment + Ingress
           #
+          sed -i "s|<AWS_REGION>|${AWS_REGION}|g" k8s-temp/frontend/deployment.yml
+          sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/frontend/deployment.yml
+
           sed -i "s|<AWS_REGION>|${AWS_REGION}|g" k8s-temp/frontend/ingress.yml
           sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/frontend/ingress.yml
           sed -i "s|<COGNITO_POOL_ID>|${COGNITO_POOL_ID}|g" k8s-temp/frontend/ingress.yml
@@ -194,9 +202,8 @@ jobs:
           sed -i "s|<ACM_CERT_ARN>|${ACM_CERT_ARN}|g" k8s-temp/frontend/ingress.yml
 
           #
-          # BACKEND Deployment + Ingress
+          # BACKEND Deployment
           #
-          # Deployment ENV FIXES (these were missing)
           sed -i "s|<AWS_REGION>|${AWS_REGION}|g" k8s-temp/backend/backend-deployment.yml
           sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/backend/backend-deployment.yml
           sed -i "s|<COGNITO_POOL_ID>|${COGNITO_POOL_ID}|g" k8s-temp/backend/backend-deployment.yml
@@ -204,7 +211,9 @@ jobs:
           sed -i "s|<WORKSPACES_DIRECTORY_ID>|${WORKSPACES_DIRECTORY_ID}|g" k8s-temp/backend/backend-deployment.yml
           sed -i "s|<WORKSPACES_BUNDLE_ID>|${WORKSPACES_BUNDLE_ID}|g" k8s-temp/backend/backend-deployment.yml
 
-          # Backend Ingress fixes
+          #
+          # BACKEND Ingress
+          #
           sed -i "s|<AWS_REGION>|${AWS_REGION}|g" k8s-temp/backend/backend-ingress.yml
           sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/backend/backend-ingress.yml
           sed -i "s|<COGNITO_POOL_ID>|${COGNITO_POOL_ID}|g" k8s-temp/backend/backend-ingress.yml
@@ -243,7 +252,7 @@ jobs:
           echo "alb_dns_name = \"${ALB_HOST}\"" > terraform/alb.auto.tfvars
           terraform -chdir=terraform apply -auto-approve
 
-      - name: Smoke test backend inside cluster
+      - name: Smoke test backend
         run: |
           kubectl run curl-test --rm -i --restart=Never \
             --image=curlimages/curl -- \
