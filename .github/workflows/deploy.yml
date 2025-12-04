@@ -152,6 +152,8 @@ jobs:
       contents: read
 
     env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}                  
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}       
       EKS_CLUSTER_NAME: ${{ needs.infra.outputs.eks_cluster_name }}
       COGNITO_POOL_ID: ${{ needs.infra.outputs.cognito_user_pool_id }}
       COGNITO_CLIENT_ID: ${{ needs.infra.outputs.cognito_user_pool_client_id }}
