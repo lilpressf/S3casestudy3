@@ -10,3 +10,10 @@ data:
       groups:
         - system:bootstrappers
         - system:nodes
+
+  mapUsers:
+- userarn: arn:aws:iam::846244128735:role/AWSReservedSSO_fictisb_IsbUsersPS_3e5a5ca6e3c26518
+  username: admin
+  groups:
+    - system:masters
+
