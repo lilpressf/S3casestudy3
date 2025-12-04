@@ -82,11 +82,6 @@ output "cognito_issuer" {
   value       = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.portal.id}"
 }
 
-output "cognito_hosted_ui" {
-  description = "Hosted UI URL (replace callback URL when ALB DNS known)"
-  value       = "https://${aws_cognito_user_pool_domain.portal.domain}.auth.${var.aws_region}.amazoncognito.com/login?client_id=${aws_cognito_user_pool_client.portal.id}&response_type=code&scope=email+openid+profile&redirect_uri=${urlencode(var.cognito_callback_urls[0])}"
-}
-
 output "cognito_user_pool_domain" {
   description = "Cognito user pool domain prefix"
   value       = aws_cognito_user_pool_domain.portal.domain

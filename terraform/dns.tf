@@ -4,7 +4,7 @@ variable "alb_dns_name" {
 }
 
 resource "aws_route53_record" "portal" {
-  zone_id = aws_route53_zone.main.zone_id
+  zone_id = data.aws_route53_zone.main.zone_id
   name    = "portal.daanwelten.nl"
   type    = "CNAME"
   ttl     = 60
