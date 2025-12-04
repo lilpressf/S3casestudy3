@@ -31,6 +31,31 @@ jobs:
           echo "TF_VAR_cognito_callback_urls=[\"http://localhost/\"]" >> $GITHUB_ENV
           echo "TF_VAR_cognito_logout_urls=[\"http://localhost/\"]" >> $GITHUB_ENV
 
+      - name: Install kubectl
+        run: |
+          VER=$(curl -L -s https://dl.k8s.io/release/stable.txt)
+          curl -LO "https://dl.k8s.io/release/${VER}/bin/linux/amd64/kubectl"
+          sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+      - name: Update kubeconfig (ignore errors if cluster is gone)
+        run: |
+          aws eks update-kubeconfig \
+            --region "${{ secrets.AWS_REGION }}" \
+            --name "$(terraform -chdir=terraform output -raw eks_cluster_name)" || true
+
+      - name: Delete Kubernetes ingress resources (ALB cleanup)
+        run: |
+          kubectl delete ingress frontend --ignore-not-found
+          kubectl delete ingress backend --ignore-not-found
+          kubectl delete svc frontend --ignore-not-found
+          kubectl delete svc backend --ignore-not-found
+          kubectl delete deployment innovatech-frontend --ignore-not-found
+          kubectl delete deployment innovatech-backend --ignore-not-found
+
+          # Wait for ALB deletion to complete
+          echo "Waiting for ALB to be deleted..."
+          sleep 30
+
       # Install Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
