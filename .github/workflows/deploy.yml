@@ -25,6 +25,7 @@ jobs:
       cognito_user_pool_client_id: ${{ steps.tf_outputs.outputs.cognito_user_pool_client_id }}
       cognito_user_pool_client_secret: ${{ steps.tf_outputs.outputs.cognito_user_pool_client_secret }}
       cognito_user_pool_domain: ${{ steps.tf_outputs.outputs.cognito_user_pool_domain }}
+      cognito_user_pool_arn: ${{ steps.tf_outputs.outputs.cognito_user_pool_arn }}
       acm_certificate_arn: ${{ steps.tf_outputs.outputs.acm_certificate_arn }}
 
     steps:
@@ -73,6 +74,7 @@ jobs:
           echo "cognito_user_pool_client_id=$(terraform output -raw cognito_user_pool_client_id)" >> $GITHUB_OUTPUT
           echo "cognito_user_pool_client_secret=$(terraform output -raw cognito_user_pool_client_secret)" >> $GITHUB_OUTPUT
           echo "cognito_user_pool_domain=$(terraform output -raw cognito_user_pool_domain)" >> $GITHUB_OUTPUT
+          echo "cognito_user_pool_arn=$(terraform output -raw cognito_user_pool_arn)" >> $GITHUB_OUTPUT
           echo "acm_certificate_arn=$(terraform output -raw acm_certificate_arn)" >> $GITHUB_OUTPUT
 
       - name: Install kubectl
@@ -139,7 +141,6 @@ jobs:
           docker push "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/innovatech-frontend:latest"
 
 
-
   #  DEPLOY TO EKS + SETUP ALB + UPDATE DNS (FULL AUTOMATION)
   deploy_app:
     name: Deploy App & Auto-Update DNS
@@ -157,6 +158,7 @@ jobs:
       COGNITO_CLIENT_ID: ${{ needs.infra.outputs.cognito_user_pool_client_id }}
       COGNITO_CLIENT_SECRET: ${{ needs.infra.outputs.cognito_user_pool_client_secret }}
       COGNITO_POOL_DOMAIN: ${{ needs.infra.outputs.cognito_user_pool_domain }}
+      COGNITO_POOL_ARN: ${{ needs.infra.outputs.cognito_user_pool_arn }}
       ACM_CERT_ARN: ${{ needs.infra.outputs.acm_certificate_arn }}
       WORKSPACES_DIRECTORY_ID: ${{ secrets.WORKSPACES_DIRECTORY_ID }}
       WORKSPACES_BUNDLE_ID: ${{ secrets.WORKSPACES_BUNDLE_ID }}
@@ -197,7 +199,7 @@ jobs:
 
           sed -i "s|<AWS_REGION>|${AWS_REGION}|g" k8s-temp/frontend/ingress.yml
           sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/frontend/ingress.yml
-          sed -i "s|<COGNITO_POOL_ID>|${COGNITO_POOL_ID}|g" k8s-temp/frontend/ingress.yml
+          sed -i "s|<COGNITO_POOL_ARN>|${COGNITO_POOL_ARN}|g" k8s-temp/frontend/ingress.yml
           sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/frontend/ingress.yml
           sed -i "s|<COGNITO_CLIENT_SECRET>|${COGNITO_CLIENT_SECRET}|g" k8s-temp/frontend/ingress.yml
           sed -i "s|<COGNITO_POOL_DOMAIN>|${COGNITO_POOL_DOMAIN}|g" k8s-temp/frontend/ingress.yml

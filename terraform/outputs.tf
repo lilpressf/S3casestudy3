@@ -91,7 +91,8 @@ output "acm_certificate_arn" {
   value = aws_acm_certificate.portal.arn
 }
 
-output "cognito_user_pool_client_secret" {
-  value     = aws_cognito_user_pool_client.portal.client_secret
-  sensitive = true
+output "cognito_user_pool_arn" {
+  description = "Cognito User Pool ARN for ALB authentication"
+  value       = aws_cognito_user_pool.portal.arn
 }
+

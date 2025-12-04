@@ -14,7 +14,7 @@ metadata:
 
     alb.ingress.kubernetes.io/group.name: innovatech
 
-    # Cognito auth (single-line JSON)
+    # Cognito auth
     alb.ingress.kubernetes.io/auth-type: cognito
     alb.ingress.kubernetes.io/auth-on-unauthenticated-request: authenticate
     alb.ingress.kubernetes.io/auth-scope: openid
@@ -22,7 +22,7 @@ metadata:
     alb.ingress.kubernetes.io/auth-session-timeout: "604800"
 
     alb.ingress.kubernetes.io/auth-idp-cognito: >-
-      {"UserPoolArn":"arn:aws:cognito-idp:<AWS_REGION>:<AWS_ACCOUNT_ID>:userpool/<COGNITO_POOL_ID>",
+      {"UserPoolArn":"<COGNITO_POOL_ARN>",
        "UserPoolClientId":"<COGNITO_CLIENT_ID>",
        "UserPoolClientSecret":"<COGNITO_CLIENT_SECRET>",
        "UserPoolDomain":"<COGNITO_POOL_DOMAIN>"}
