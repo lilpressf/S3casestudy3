@@ -39,7 +39,7 @@ resource "aws_cognito_user_pool_client" "portal" {
   ]
 
   supported_identity_providers = ["COGNITO"]
-  generate_secret              = false
+  generate_secret              = true
 }
 
 resource "aws_cognito_user_pool_domain" "portal" {
