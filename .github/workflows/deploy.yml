@@ -226,7 +226,7 @@ jobs:
 
       - name: Update Route53 DNS via Terraform
         run: |
-          echo "alb_dns_name = \"${{ env.ALB_HOST }}\"" > terraform/alb.auto.tfvars
+          echo "alb_dns_name = \"${ALB_HOST}\"" > terraform/alb.auto.tfvars
           terraform -chdir=terraform apply -auto-approve
 
       - name: Smoke test backend inside cluster
