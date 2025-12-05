@@ -34,13 +34,6 @@ variable "private_subnet_b_cidr" {
   default     = "10.0.4.0/24"
 }
 
-variable "ssh_public_key" {
-  description = "SSH public key contents"
-  type        = string
-  sensitive   = true
-}
-
-
 variable "acm_certificate_arn" {
   description = "ACM certificate ARN for ALB"
   type        = string
