@@ -40,10 +40,6 @@ variable "ssh_public_key" {
   sensitive   = true
 }
 
-variable "ssh_cidr" {
-  description = "CIDR block allowed SSH access"
-  type        = string
-}
 
 variable "acm_certificate_arn" {
   description = "ACM certificate ARN for ALB"
