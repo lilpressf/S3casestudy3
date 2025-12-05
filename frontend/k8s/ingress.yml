@@ -5,36 +5,33 @@ metadata:
   namespace: default
   annotations:
     kubernetes.io/ingress.class: alb
+
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-central-1:846244128735:certificate/effed9fc-db99-497f-a7cb-da5b8b437716
+    alb.ingress.kubernetes.io/certificate-arn: <ACM_CERT_ARN>
     alb.ingress.kubernetes.io/ssl-redirect: "443"
-
     alb.ingress.kubernetes.io/group.name: innovatech
 
-    # Cognito auth
+    # --- Cognito Auth ---
     alb.ingress.kubernetes.io/auth-type: cognito
     alb.ingress.kubernetes.io/auth-on-unauthenticated-request: authenticate
     alb.ingress.kubernetes.io/auth-scope: openid
-    alb.ingress.kubernetes.io/auth-session-cookie: awsalb-auth
+    alb.ingress.kubernetes.io/auth-session-cookie: AWSELBAuthSessionCookie
     alb.ingress.kubernetes.io/auth-session-timeout: "604800"
-
     alb.ingress.kubernetes.io/auth-idp-cognito: >
       {"UserPoolArn":"arn:aws:cognito-idp:eu-central-1:846244128735:userpool/eu-central-1_yYrdWrj3k",
        "UserPoolClientId":"2o3pgme20geju6kambsl22ni99",
        "UserPoolDomain":"innovatech-7b61b43d"}
-
 spec:
   rules:
-    - host: portal.daanwelten.nl
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: frontend
-                port:
-                  number: 80
+  - host: portal.daanwelten.nl
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 80
