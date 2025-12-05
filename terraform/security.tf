@@ -13,8 +13,3 @@ resource "aws_security_group" "lambda_sg" {
   tags = { Name = "lambda-sg" }
 }
 
-# SSH Key Pair
-resource "aws_key_pair" "web_key" {
-  key_name   = "web-key"
-  public_key = var.ssh_public_key
-}
