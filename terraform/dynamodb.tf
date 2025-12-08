@@ -1,30 +1,88 @@
-resource "aws_dynamodb_table" "app" {
-  name         = "app-main"
+resource "aws_dynamodb_table" "employees" {
+  name         = "innovatech-employees"
   billing_mode = "PAY_PER_REQUEST"
 
-  hash_key  = "pk"
-  range_key = "sk"
+  hash_key = "employee_id"
 
   attribute {
-    name = "pk"
+    name = "employee_id"
     type = "S"
   }
 
   attribute {
-    name = "sk"
+    name = "email"
     type = "S"
   }
 
-  server_side_encryption {
-    enabled = true
+  global_secondary_index {
+    name            = "email-index"
+    hash_key        = "email"
+    projection_type = "ALL"
   }
 
   point_in_time_recovery {
     enabled = true
   }
 
+  server_side_encryption {
+    enabled = true
+  }
+
   tags = {
-    env = "dev"
+    Environment = "dev"
+    Project     = "cs3-innovatech"
+    Purpose     = "employee-lifecycle"
   }
 }
 
+resource "aws_dynamodb_table" "devices" {
+  name         = "innovatech-devices"
+  billing_mode = "PAY_PER_REQUEST"
+
+  hash_key = "device_id"
+
+  attribute {
+    name = "device_id"
+    type = "S"
+  }
+
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  server_side_encryption {
+    enabled = true
+  }
+
+  tags = {
+    Environment = "dev"
+    Project     = "cs3-innovatech"
+    Purpose     = "device-management"
+  }
+}
+
+resource "aws_dynamodb_table" "audit_logs" {
+  name         = "innovatech-audit-logs"
+  billing_mode = "PAY_PER_REQUEST"
+
+  hash_key = "log_id"
+
+  attribute {
+    name = "log_id"
+    type = "S"
+  }
+
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  server_side_encryption {
+    enabled = true
+  }
+
+  tags = {
+    Environment = "dev"
+    Project     = "cs3-innovatech"
+    Purpose     = "audit-logging"
+  }
+}

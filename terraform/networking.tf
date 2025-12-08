@@ -42,33 +42,29 @@ resource "aws_route_table_association" "private_assoc" {
   route_table_id = aws_route_table.private_rt.id
 }
 
-# NAT Instance
-resource "aws_instance" "nat" {
-  ami                         = data.aws_ami.amazon_linux.id
-  instance_type               = "t3.micro"
-  subnet_id                   = aws_subnet.public_a.id
-  vpc_security_group_ids      = [aws_security_group.nat_sg.id]
-  associate_public_ip_address = true
-  source_dest_check           = false
-  key_name                    = aws_key_pair.web_key.key_name
+resource "aws_route_table_association" "private_b_assoc" {
+  subnet_id      = aws_subnet.private_b.id
+  route_table_id = aws_route_table.private_rt.id
+}
 
-  user_data = <<-EOF
-              #!/bin/bash
-              yum update -y
-              echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
-              sysctl -p /etc/sysctl.conf
-              yum install -y iptables-services
-              iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-              service iptables save
-              systemctl enable iptables
-              EOF
 
-  tags = { Name = "nat-instance" }
+resource "aws_nat_gateway" "ngw" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public_a.id
+
+  tags = {
+    Name = "nat-gateway"
+  }
+}
+
+resource "aws_eip" "nat" {
+  domain = "vpc"
 }
 
 # Private route to NAT for Internet access
 resource "aws_route" "private_nat_route" {
   route_table_id         = aws_route_table.private_rt.id
   destination_cidr_block = "0.0.0.0/0"
-  network_interface_id   = aws_instance.nat.primary_network_interface_id
+  nat_gateway_id         = aws_nat_gateway.ngw.id
 }
+

@@ -1,48 +1,62 @@
-output "soar_lambda_name" {
-  value = aws_lambda_function.soar.function_name
+output "vpc_id" {
+  value       = aws_vpc.main.id
 }
 
-output "sns_topic_arn" {
-  value = aws_sns_topic.soar_alerts.arn
-}
-
-output "nat_public_ip" {
-  value = aws_instance.nat.public_ip
-}
-
-output "web_key_name" {
-  value = aws_key_pair.web_key.key_name
-}
-
-output "dynamodb_table_name" {
-  value = aws_dynamodb_table.app.name
-}
-
-output "cloudwatch_alarm_name" {
-  value = aws_cloudwatch_metric_alarm.alb_5xx_sum.alarm_name
-}
-
-output "eventbridge_rules" {
+output "public_subnet_ids" {
   value = [
-    aws_cloudwatch_event_rule.sechub_findings.name,
-    aws_cloudwatch_event_rule.guardduty_findings.name,
-    aws_cloudwatch_event_rule.cw_alarm_state.name
+    aws_subnet.public_a.id,
+    aws_subnet.public_b.id
   ]
 }
 
-output "alb_dns_name" {
-  value       = aws_lb.web_alb.dns_name
-  description = "Public DNS name of the Application Load Balancer"
+output "private_subnet_ids" {
+  value = [
+    aws_subnet.private_a.id,
+    aws_subnet.private_b.id
+  ]
 }
 
-output "ecs_service_name" {
-  value = aws_ecs_service.webserver.name
+output "eks_cluster_name" {
+  value = aws_eks_cluster.main.name
 }
 
-output "ecs_dns_name" {
-  value = "webapp.${aws_service_discovery_private_dns_namespace.svc.name}"
+output "eks_node_group_name" {
+  value = aws_eks_node_group.default.node_group_name
 }
 
-output "ecs_log_group_name" {
-  value = aws_cloudwatch_log_group.ecs_webapp.name
+output "eks_node_role_arn" {
+  value = aws_iam_role.eks_node_role.arn
+}
+
+output "lbc_irsa_role_arn" {
+  value = aws_iam_role.lbc_irsa.arn
+}
+
+output "backend_irsa_role_arn" {
+  value = aws_iam_role.backend_irsa.arn
+}
+
+output "cognito_user_pool_id" {
+  value = aws_cognito_user_pool.portal.id
+}
+
+output "cognito_user_pool_client_id" {
+  value = aws_cognito_user_pool_client.portal.id
+}
+
+output "cognito_user_pool_client_secret" {
+  value = aws_cognito_user_pool_client.portal.client_secret
+  sensitive = true
+}
+
+output "cognito_user_pool_domain" {
+  value = aws_cognito_user_pool_domain.portal.domain
+}
+
+output "cognito_user_pool_arn" {
+  value = aws_cognito_user_pool.portal.arn
+}
+
+output "acm_certificate_arn" {
+  value = aws_acm_certificate.portal.arn
 }

@@ -7,37 +7,104 @@ jobs:
   destroy:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write      
+      id-token: write
       contents: read
 
     steps:
+
+      # Checkout
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Configure AWS credentials via OIDC
+      # AWS Credentials via OIDC
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Set Terraform environment variables
+      # Export Terraform vars
+      - name: Export Terraform variables
         run: |
           echo "TF_VAR_ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}" >> $GITHUB_ENV
           echo "TF_VAR_ssh_cidr=${{ secrets.SSH_CIDR }}" >> $GITHUB_ENV
-          echo "TF_VAR_db_username=${{ secrets.DB_USERNAME }}" >> $GITHUB_ENV
-          echo "TF_VAR_db_password=${{ secrets.DB_PASSWORD }}" >> $GITHUB_ENV
-          echo "TF_VAR_notify_email=${{ secrets.NOTIFY_EMAIL }}" >> $GITHUB_ENV
-          echo "TF_VAR_ecr_image_uri=${{ secrets.ECR_IMAGE_URI }}" >> $GITHUB_ENV
+          echo "TF_VAR_cognito_callback_urls=[\"http://localhost/\"]" >> $GITHUB_ENV
+          echo "TF_VAR_cognito_logout_urls=[\"http://localhost/\"]" >> $GITHUB_ENV
 
-      - name: Set up Terraform
+      # Install Terraform
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.8.5
 
+      # Init Terraform
       - name: Terraform Init
         run: terraform init -reconfigure
         working-directory: ./terraform
 
+      # OPTIONAL Recovery for orphaned nodegroups
+      - name: Remove orphaned EKS nodegroups (failsafe)
+        run: |
+          set -e
+          CLUSTER="innovatech-eks"
+          REGION="${{ secrets.AWS_REGION }}"
+
+          NGS=$(aws eks list-nodegroups \
+              --cluster-name "$CLUSTER" \
+              --region "$REGION" \
+              --query 'nodegroups' \
+              --output text || true)
+
+          if [ -n "$NGS" ] && [ "$NGS" != "None" ]; then
+            echo "Found orphaned nodegroups: $NGS"
+            for NG in $NGS; do
+              echo "Deleting orphaned nodegroup: $NG"
+              aws eks delete-nodegroup \
+                --cluster-name "$CLUSTER" \
+                --nodegroup-name "$NG" \
+                --region "$REGION" || true
+
+              aws eks wait nodegroup-deleted \
+                --cluster-name "$CLUSTER" \
+                --nodegroup-name "$NG" \
+                --region "$REGION" || true
+            done
+          else
+            echo "No orphaned nodegroups to delete."
+          fi
+
+      # Clean all ECR repos created by Terraform
+      - name: Clean ECR repositories
+        run: |
+          set -e
+          REGION="${{ secrets.AWS_REGION }}"
+          ACCOUNT="${{ secrets.AWS_ACCOUNT_ID }}"
+          REPOS=("innovatech-backend" "innovatech-frontend")
+
+          for REPO in "${REPOS[@]}"; do
+            echo "Checking repository: $REPO"
+            if aws ecr describe-repositories --repository-names "$REPO" --region "$REGION" >/dev/null 2>&1; then
+              IDS=$(aws ecr list-images \
+                --repository-name "$REPO" \
+                --region "$REGION" \
+                --query "imageIds[*]" \
+                --output json)
+
+              if [ "$IDS" != "[]" ]; then
+                echo "Deleting all images in $REPO..."
+                aws ecr batch-delete-image \
+                  --repository-name "$REPO" \
+                  --region "$REGION" \
+                  --image-ids "$IDS" || true
+              else
+                echo "$REPO already empty."
+              fi
+            else
+              echo "Repository $REPO does not exist. Skipping."
+            fi
+          done
+
+      # Destroy Terraform-managed infrastructure
       - name: Terraform Destroy
         run: terraform destroy -auto-approve
         working-directory: ./terraform

@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Innovatech Admin</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --accent: #38bdf8;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --danger: #f87171;
+      --success: #34d399;
+    }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: radial-gradient(circle at 20% 20%, #1e293b, #0f172a 40%), #0f172a;
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #1f2937;
+      background: rgba(15, 23, 42, 0.85);
+      position: sticky;
+      top: 0;
+      backdrop-filter: blur(8px);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .pill {
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: #0ea5e9;
+      color: #0b1024;
+      font-weight: 700;
+      font-size: 12px;
+    }
+    main {
+      padding: 28px 32px 48px;
+      display: grid;
+      gap: 18px;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+    label {
+      display: block;
+      margin: 10px 0 4px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #1f2937;
+      background: #0b1224;
+      color: var(--text);
+    }
+    button {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #0ea5e9, #22d3ee);
+      color: #0b1024;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+    }
+    button.secondary {
+      background: #1f2937;
+      color: var(--text);
+      border: 1px solid #283548;
+    }
+    .status {
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    .status.success { color: var(--success); }
+    .status.error { color: var(--danger); }
+    .list {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .item {
+      padding: 10px;
+      border-radius: 8px;
+      background: #0b1224;
+      border: 1px solid #1f2937;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .badge {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #0f172a;
+      border: 1px solid #1f2937;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    footer {
+      text-align: center;
+      padding: 18px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    @media (max-width: 640px) {
+      header { flex-direction: column; align-items: flex-start; gap: 8px; }
+      main { grid-template-columns: 1fr; padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="pill">Innovatech</div>
+      <div>Employee Ops</div>
+    </div>
+    <div class="badge">Admin Dashboard</div>
+  </header>
+
+  <main>
+    <section class="card" id="onboard-card">
+      <h2>Onboard Employee</h2>
+      <label for="on-name">Name</label>
+      <input id="on-name" placeholder="Jane Doe" />
+      <label for="on-email">Email</label>
+      <input id="on-email" placeholder="jane@example.com" />
+      <label for="on-dept">Department</label>
+      <select id="on-dept">
+        <option>Engineering</option>
+        <option>IT</option>
+        <option>Finance</option>
+        <option>HR</option>
+        <option>Sales</option>
+      </select>
+      <label for="on-role">Role</label>
+      <input id="on-role" placeholder="Developer" />
+      <button id="onboard-btn">Create account & workspace</button>
+      <div class="status" id="on-status"></div>
+    </section>
+
+    <section class="card" id="offboard-card">
+      <h2>Offboard Employee</h2>
+      <label for="off-email">Email</label>
+      <input id="off-email" placeholder="jane@example.com" />
+      <button class="secondary" id="offboard-btn">Disable account & reclaim workspace</button>
+      <div class="status" id="off-status"></div>
+    </section>
+
+    <section class="card">
+      <h2>Recent Activity</h2>
+      <div class="list" id="activity-list">
+        <div class="item"><span>Loaded dashboard</span><span class="badge">info</span></div>
+      </div>
+    </section>
+  </main>
+  <footer>Requests are sent to /api/* on the same host. Authentication is handled by Cognito via the load balancer.</footer>
+
+  <script>
+    async function api(path, payload) {
+      const headers = { 'Content-Type': 'application/json' };
+      const res = await fetch('/api' + path, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || 'Request failed');
+      }
+      return res.json().catch(() => ({}));
+    }
+
+    const onStatus = document.getElementById('on-status');
+    const offStatus = document.getElementById('off-status');
+    const activity = document.getElementById('activity-list');
+
+    function pushActivity(message, level = 'info') {
+      const node = document.createElement('div');
+      node.className = 'item';
+      node.innerHTML = `<span>${message}</span><span class="badge">${level}</span>`;
+      activity.prepend(node);
+    }
+
+    document.getElementById('onboard-btn').onclick = async () => {
+      onStatus.textContent = 'Submitting...';
+      onStatus.className = 'status';
+      try {
+        const payload = {
+          name: document.getElementById('on-name').value,
+          email: document.getElementById('on-email').value,
+          department: document.getElementById('on-dept').value,
+          role: document.getElementById('on-role').value
+        };
+        await api('/onboard', payload);
+        onStatus.textContent = 'Onboarding started';
+        onStatus.classList.add('success');
+        pushActivity(`Onboarding requested for ${payload.email}`, 'success');
+      } catch (err) {
+        onStatus.textContent = err.message;
+        onStatus.classList.add('error');
+        pushActivity(`Onboarding failed: ${err.message}`, 'error');
+      }
+    };
+
+    document.getElementById('offboard-btn').onclick = async () => {
+      offStatus.textContent = 'Submitting...';
+      offStatus.className = 'status';
+      try {
+        const payload = { email: document.getElementById('off-email').value };
+        await api('/offboard', payload);
+        offStatus.textContent = 'Offboarding started';
+        offStatus.classList.add('success');
+        pushActivity(`Offboarding requested for ${payload.email}`, 'warning');
+      } catch (err) {
+        offStatus.textContent = err.message;
+        offStatus.classList.add('error');
+        pushActivity(`Offboarding failed: ${err.message}`, 'error');
+      }
+    };
+  </script>
+</body>
+</html>

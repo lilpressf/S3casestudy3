@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-auth
+  namespace: kube-system
+data:
+  mapRoles: |
+    - rolearn: ${EKS_NODE_ROLE_ARN}
+      username: system:node:{{EC2PrivateDNSName}}
+      groups:
+        - system:bootstrappers
+        - system:nodes
+
+    - rolearn: arn:aws:iam::846244128735:role/AWSReservedSSO_fictisb_IsbUsersPS_3e5a5ca6e3c26518
+      username: sso-admin
+      groups:
+        - system:masters

@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: innovatech-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: innovatech-backend
+  template:
+    metadata:
+      labels:
+        app: innovatech-backend
+    spec:
+      serviceAccountName: backend-sa
+      containers:
+        - name: backend
+          image: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/innovatech-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5000
+          env:
+            - name: AWS_REGION
+              value: <AWS_REGION>
+            - name: EMPLOYEE_TABLE
+              value: innovatech-employees
+            - name: AUDIT_TABLE
+              value: innovatech-audit-logs
+            - name: COGNITO_POOL_ID
+              value: <COGNITO_POOL_ID>
+            - name: COGNITO_CLIENT_ID
+              value: <COGNITO_CLIENT_ID>
+            - name: WORKSPACES_DIRECTORY_ID
+              value: <WORKSPACES_DIRECTORY_ID>
+            - name: WORKSPACES_BUNDLE_ID
+              value: <WORKSPACES_BUNDLE_ID>

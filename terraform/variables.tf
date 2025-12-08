@@ -34,42 +34,20 @@ variable "private_subnet_b_cidr" {
   default     = "10.0.4.0/24"
 }
 
-variable "db_username" {
-  description = "Database username"
+variable "acm_certificate_arn" {
+  description = "ACM certificate ARN for ALB"
   type        = string
-  sensitive   = true
+  default     = ""
 }
 
-variable "db_password" {
-  description = "Database password"
+variable "workspaces_directory_id" {
+  description = "AWS WorkSpaces Directory ID"
   type        = string
-  sensitive   = true
+  default     = ""
 }
 
-variable "ssh_public_key" {
-  description = "Contents of your SSH public key"
+variable "workspaces_bundle_id" {
+  description = "AWS WorkSpaces Bundle ID"
   type        = string
-  sensitive   = true
-}
-
-variable "ssh_cidr" {
-  description = "CIDR block allowed to SSH into webservers"
-  type        = string
-  sensitive   = true
-}
-
-variable "notify_email" {
-  description = "Email to receive SOAR alerts"
-  type        = string
-}
-
-variable "ecr_image_uri" {
-  description = "URI of the container image in ECR"
-  type        = string
-}
-
-variable "container_port" {
-  description = "Container port"
-  type        = number
-  default     = 8080
+  default     = ""
 }
