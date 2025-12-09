@@ -40,4 +40,8 @@ variable "acm_certificate_arn" {
   default     = ""
 }
 
-
+variable "ssh_cidr" {
+  description = "CIDR used for SSH/RDP admin access to workstations"
+  type        = string
+  default     = "0.0.0.0/0" 
+}

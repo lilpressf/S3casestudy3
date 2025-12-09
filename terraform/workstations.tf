@@ -21,37 +21,6 @@ data "aws_ami" "windows_server" {
 }
 
 ########################################
-# Security Group for Workstations
-########################################
-
-resource "aws_security_group" "workstation_sg" {
-  name   = "workstation-sg"
-  vpc_id = aws_vpc.main.id
-
-  # RDP from your IP (replace with your public IP or a VPN CIDR)
-  ingress {
-    from_port   = 3389
-    to_port     = 3389
-    protocol    = "tcp"
-    cidr_blocks = ["YOUR_PUBLIC_IP/32"]
-  }
-
-  # Allow all outbound for SSM, updates, etc.
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name        = "workstation-sg"
-    Environment = "dev"
-    Project     = "cs3-innovatech"
-  }
-}
-
-########################################
 # IAM Role / Instance Profile for SSM
 ########################################
 
@@ -98,7 +67,7 @@ resource "aws_iam_instance_profile" "workstation_profile" {
 resource "aws_launch_template" "workstation" {
   name_prefix   = "workstation-"
   image_id      = data.aws_ami.windows_server.id
-  instance_type = "t3.medium" # adjust if needed
+  instance_type = "t3.micro" # adjust if needed
 
   iam_instance_profile {
     name = aws_iam_instance_profile.workstation_profile.name

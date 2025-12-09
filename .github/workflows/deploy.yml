@@ -6,6 +6,7 @@ on:
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  
 
 jobs:
   # 1) TERRAFORM: EKS, Cognito, ACM, etc.
@@ -147,8 +148,6 @@ jobs:
       COGNITO_POOL_DOMAIN: ${{ needs.infra.outputs.cognito_user_pool_domain }}
       COGNITO_POOL_ARN: ${{ needs.infra.outputs.cognito_user_pool_arn }}
       ACM_CERT_ARN: ${{ needs.infra.outputs.acm_certificate_arn }}
-      WORKSPACES_DIRECTORY_ID: ${{ secrets.WORKSPACES_DIRECTORY_ID }}
-      WORKSPACES_BUNDLE_ID: ${{ secrets.WORKSPACES_BUNDLE_ID }}
 
     steps:
       - name: Checkout
