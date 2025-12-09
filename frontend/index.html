@@ -84,10 +84,10 @@
     main {
       flex: 1;
       display: grid;
-      grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 0.9fr);
       gap: 18px;
       padding: 24px;
-      max-width: 1100px;
+      max-width: 1280px;
       width: 100%;
       margin: 0 auto;
     }
@@ -254,15 +254,9 @@
       font-size: 12px;
     }
 
-    @media (max-width: 640px) {
-      header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-      }
+    @media (max-width: 960px) {
       main {
         grid-template-columns: 1fr;
-        padding: 18px;
       }
     }
   </style>
@@ -299,15 +293,9 @@
       </div>
     </section>
 
-    <!-- Activity / Workstations -->
-    <section class="card" id="activity-card">
-      <h2>Activity & Workstations <span>Audit log and VM controls</span></h2>
-
-      <div class="activity-log" id="activity-list"></div>
-
-      <hr style="border: none; border-top: 1px dashed rgba(30,64,175,0.7); margin: 10px -4px 8px;" />
-
-      <h3 style="font-size: 13px; margin: 4px 0 6px; color: #e5e7eb;">Workstations</h3>
+    <!-- Workstations -->
+    <section class="card" id="workstation-card">
+      <h2>Workstations <span>Provision & teardown EC2 desktops</span></h2>
 
       <label for="ws-email">Employee Email</label>
       <input id="ws-email" placeholder="jane@example.com" />
@@ -320,16 +308,41 @@
       </select>
 
       <button id="ws-create-btn">Create Workstation</button>
-      <button id="ws-terminate-btn" style="margin-left: 8px; background: linear-gradient(135deg, #f97373, #ef4444); box-shadow: 0 12px 24px rgba(248,113,113,0.4), 0 0 0 1px rgba(127,29,29,0.9);">Terminate Workstation</button>
+      <button
+        id="ws-terminate-btn"
+        style="
+          margin-left: 8px;
+          background: linear-gradient(135deg, #f97373, #ef4444);
+          box-shadow: 0 12px 24px rgba(248,113,113,0.4),
+            0 0 0 1px rgba(127,29,29,0.9);
+        "
+      >
+        Terminate Workstation
+      </button>
 
       <div class="status">
         <span id="ws-status"></span>
       </div>
     </section>
 
-    <!-- Offboarding -->
-    <section class="card" id="offboard-card">
-      <h2>Offboard Employee <span>Revokes access & tears down resources</span></h2>
+    <!-- Activity / Offboarding -->
+    <section class="card" id="activity-card">
+      <h2>Recent Activity & Offboarding <span>Audit log and teardown</span></h2>
+
+      <div class="activity-log" id="activity-list"></div>
+
+      <hr
+        style="
+          border: none;
+          border-top: 1px dashed rgba(30, 64, 175, 0.7);
+          margin: 10px -4px 8px;
+        "
+      />
+
+      <h3 style="font-size: 13px; margin: 4px 0 6px; color: #e5e7eb;">
+        Offboard Employee
+      </h3>
+
       <label for="off-email">Email</label>
       <input id="off-email" placeholder="jane@example.com" />
 
@@ -340,7 +353,10 @@
     </section>
   </main>
 
-  <footer>Requests are sent to /api/* on the same host. Authentication is handled by Cognito via the load balancer.</footer>
+  <footer>
+    Requests are sent to /api/* on the same host. Authentication is handled by
+    Cognito via the load balancer.
+  </footer>
 
   <script>
     async function api(path, payload, method = 'POST') {
@@ -412,8 +428,11 @@
         const res = await api('/workstation/create', { email, department: dept });
         wsStatus.textContent = 'Workstation creation started';
         pushActivity(`Workstation requested for ${email}`, 'info');
-        if (res.detail && res.detail.workstation && res.detail.workstation.instance_id) {
-          pushActivity(`Instance ID: ${res.detail.workstation.instance_id}`, 'info');
+        const ws = res.detail && res.detail.workstation;
+        if (ws && ws.instance_id) {
+          pushActivity(`Instance ID: ${ws.instance_id}`, 'info');
+        } else if (ws && ws.reason) {
+          pushActivity(`Workstation status: ${ws.status} (${ws.reason})`, 'warning');
         }
       } catch (err) {
         wsStatus.textContent = 'Error creating workstation';
