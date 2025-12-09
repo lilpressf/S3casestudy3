@@ -1,18 +1,18 @@
 output "vpc_id" {
-  value       = aws_vpc.main.id
+  value = aws_vpc.main.id
 }
 
 output "public_subnet_ids" {
   value = [
     aws_subnet.public_a.id,
-    aws_subnet.public_b.id
+    aws_subnet.public_b.id,
   ]
 }
 
 output "private_subnet_ids" {
   value = [
     aws_subnet.private_a.id,
-    aws_subnet.private_b.id
+    aws_subnet.private_b.id,
   ]
 }
 
@@ -36,27 +36,17 @@ output "backend_irsa_role_arn" {
   value = aws_iam_role.backend_irsa.arn
 }
 
+# Cognito values from data sources (read‑only)
 output "cognito_user_pool_id" {
-  value = aws_cognito_user_pool.portal.id
+  value = data.aws_cognito_user_pool.portal.id
 }
 
 output "cognito_user_pool_client_id" {
-  value = aws_cognito_user_pool_client.portal.id
+  value = data.aws_cognito_user_pool_client.portal.id
 }
 
-output "cognito_user_pool_client_secret" {
-  value = aws_cognito_user_pool_client.portal.client_secret
-  sensitive = true
-}
+# Optional: Cognito domain if you also add a data source for it
+# output "cognito_user_pool_domain" {
+#   value = "innovatech-b37ae2b2"
+# }
 
-output "cognito_user_pool_domain" {
-  value = aws_cognito_user_pool_domain.portal.domain
-}
-
-output "cognito_user_pool_arn" {
-  value = aws_cognito_user_pool.portal.arn
-}
-
-output "acm_certificate_arn" {
-  value = aws_acm_certificate.portal.arn
-}

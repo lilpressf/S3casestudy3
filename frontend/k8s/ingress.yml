@@ -20,9 +20,9 @@ metadata:
     alb.ingress.kubernetes.io/auth-session-cookie: AWSELBAuthSessionCookie
     alb.ingress.kubernetes.io/auth-session-timeout: "604800"
     alb.ingress.kubernetes.io/auth-idp-cognito: >
-      {"UserPoolArn":"arn:aws:cognito-idp:eu-central-1:846244128735:userpool/eu-central-1_yYrdWrj3k",
-       "UserPoolClientId":"2o3pgme20geju6kambsl22ni99",
-       "UserPoolDomain":"innovatech-7b61b43d"}
+      {"UserPoolArn":"arn:aws:cognito-idp:eu-central-1:846244128735:userpool/eu-central-1_BEC7JQwYd",
+       "UserPoolClientId":"68nlqmca9tb48urul3fpvu58e",
+       "UserPoolDomain":"innovatech-b37ae2b2"}
 spec:
   rules:
   - host: portal.daanwelten.nl

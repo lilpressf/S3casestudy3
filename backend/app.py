@@ -17,8 +17,7 @@ AUDIT_TABLE = os.getenv("AUDIT_TABLE", "innovatech-audit-logs")
 COGNITO_POOL_ID = os.getenv("COGNITO_POOL_ID")
 COGNITO_CLIENT_ID = os.getenv("COGNITO_CLIENT_ID")
 COGNITO_REGION = os.getenv("AWS_REGION", "eu-central-1")
-WORKSPACES_DIRECTORY_ID = os.getenv("WORKSPACES_DIRECTORY_ID", "")
-WORKSPACES_BUNDLE_ID = os.getenv("WORKSPACES_BUNDLE_ID", "")
+
 automator = Automation()
 
 # Simple in-memory JWKS cache
@@ -67,11 +66,9 @@ def extract_token():
     if auth_header and auth_header.startswith("Bearer "):
         return auth_header.split(" ", 1)[1]
 
-    # ALB OIDC authentication injects the token in x-amzn-oidc-data
+    # ALB OIDC authentication can inject the token in x-amzn-oidc-data
     alb_oidc = request.headers.get("x-amzn-oidc-data")
     if alb_oidc:
-        # ALB can pass the JWT directly; if your setup base64-encodes it,
-        # this is where you would decode it.
         return alb_oidc
 
     raise ValueError("Missing or invalid Authorization header")
@@ -147,29 +144,46 @@ def onboard():
         name=data["name"],
         group=data["department"],
     )
-    workspace = automator.provision_workspace(email=data["email"])
-
-    workspace_id = (
-        workspace.get("workspace_id") if isinstance(workspace, dict) else None
+    workstation = automator.create_workstation(
+        email=data["email"],
+        department=data["department"],
     )
-    detail = {"identity": identity, "workspace": workspace}
 
-    # Persist workspace id and status for later offboarding
+    workstation_instance_id = (
+        workstation.get("instance_id") if isinstance(workstation, dict) else None
+    )
+    detail = {
+        "identity": identity,
+        "workstation": workstation,
+    }
+
+    # Persist workstation instance id and status
     dynamodb_table(EMP_TABLE).update_item(
         Key={"employee_id": employee_id},
-        UpdateExpression="SET #s = :status, workspace_id = :ws, detail = :detail",
+        UpdateExpression=(
+            "SET #s = :status, detail = :detail, workstation_instance_id = :iid"
+        ),
         ExpressionAttributeNames={"#s": "status"},
         ExpressionAttributeValues={
             ":status": "onboard_submitted",
-            ":ws": workspace_id,
             ":detail": json.dumps(detail),
+            ":iid": workstation_instance_id,
         },
     )
 
-    write_audit("onboard", data["email"], status="submitted", detail=json.dumps(detail))
+    write_audit(
+        "onboard",
+        data["email"],
+        status="submitted",
+        detail=json.dumps(detail),
+    )
     return (
         jsonify(
-            {"message": "Onboarding started", "employee_id": employee_id, "detail": detail}
+            {
+                "message": "Onboarding started",
+                "employee_id": employee_id,
+                "detail": detail,
+            }
         ),
         201,
     )
@@ -194,16 +208,23 @@ def offboard():
         return jsonify({"error": "Employee not found"}), 404
 
     employee = items[0]
-    workspace_id = data.get("workspace_id") or employee.get("workspace_id", "")
+    workstation_instance_id = data.get("workstation_instance_id") or employee.get(
+        "workstation_instance_id", ""
+    )
 
     write_audit("offboard", email, status="started")
-    ws_status = automator.terminate_workspace(workspace_id)
     identity_status = automator.disable_identity(email)
-    detail = {"workspace": ws_status, "identity": identity_status}
+    workstation_status = automator.terminate_workstation(workstation_instance_id)
+    detail = {
+        "identity": identity_status,
+        "workstation": workstation_status,
+    }
 
     dynamodb_table(EMP_TABLE).update_item(
         Key={"employee_id": employee["employee_id"]},
-        UpdateExpression="SET #s = :status, last_offboard_detail = :detail",
+        UpdateExpression=(
+            "SET #s = :status, last_offboard_detail = :detail"
+        ),
         ExpressionAttributeNames={"#s": "status"},
         ExpressionAttributeValues={
             ":status": "offboard_submitted",
@@ -211,8 +232,112 @@ def offboard():
         },
     )
 
-    write_audit("offboard", email, status="submitted", detail=json.dumps(detail))
-    return jsonify({"message": "Offboarding started", "email": email, "detail": detail}), 200
+    write_audit(
+        "offboard",
+        email,
+        status="submitted",
+        detail=json.dumps(detail),
+    )
+    return (
+        jsonify(
+            {
+                "message": "Offboarding started",
+                "email": email,
+                "detail": detail,
+            }
+        ),
+        200,
+    )
+
+
+@app.route("/api/workstation/create", methods=["POST"])
+@require_auth
+def create_workstation():
+    data = request.json or {}
+    email = data.get("email")
+    department = data.get("department")
+    if not email or not department:
+        return jsonify({"error": "Missing email or department"}), 400
+
+    # Validate that the employee exists
+    resp = dynamodb_table(EMP_TABLE).query(
+        IndexName="email-index",
+        KeyConditionExpression=Key("email").eq(email),
+        Limit=1,
+    )
+    items = resp.get("Items", [])
+    if not items:
+        return jsonify({"error": "Employee not found"}), 404
+
+    employee = items[0]
+
+    ws = automator.create_workstation(email=email, department=department)
+    detail = {"workstation": ws}
+
+    instance_id = ws.get("instance_id")
+    if instance_id:
+        dynamodb_table(EMP_TABLE).update_item(
+            Key={"employee_id": employee["employee_id"]},
+            UpdateExpression="SET workstation_instance_id = :iid",
+            ExpressionAttributeValues={":iid": instance_id},
+        )
+
+    write_audit(
+        "create_workstation",
+        email,
+        status="submitted",
+        detail=json.dumps(detail),
+    )
+    return (
+        jsonify(
+            {
+                "message": "Workstation creation started",
+                "detail": detail,
+            }
+        ),
+        201,
+    )
+
+
+@app.route("/api/workstation/terminate", methods=["POST"])
+@require_auth
+def terminate_workstation():
+    data = request.json or {}
+    email = data.get("email")
+    instance_id = data.get("instance_id")
+    if not email:
+        return jsonify({"error": "Missing email"}), 400
+
+    if not instance_id:
+        resp = dynamodb_table(EMP_TABLE).query(
+            IndexName="email-index",
+            KeyConditionExpression=Key("email").eq(email),
+            Limit=1,
+        )
+        items = resp.get("Items", [])
+        if not items:
+            return jsonify({"error": "Employee not found"}), 404
+        employee = items[0]
+        instance_id = employee.get("workstation_instance_id")
+
+    ws_status = automator.terminate_workstation(instance_id)
+    detail = {"workstation": ws_status}
+
+    write_audit(
+        "terminate_workstation",
+        email,
+        status="submitted",
+        detail=json.dumps(detail),
+    )
+    return (
+        jsonify(
+            {
+                "message": "Workstation termination started",
+                "detail": detail,
+            }
+        ),
+        200,
+    )
 
 
 if __name__ == "__main__":

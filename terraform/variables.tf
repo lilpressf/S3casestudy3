@@ -40,14 +40,4 @@ variable "acm_certificate_arn" {
   default     = ""
 }
 
-variable "workspaces_directory_id" {
-  description = "AWS WorkSpaces Directory ID"
-  type        = string
-  default     = ""
-}
 
-variable "workspaces_bundle_id" {
-  description = "AWS WorkSpaces Bundle ID"
-  type        = string
-  default     = ""
-}

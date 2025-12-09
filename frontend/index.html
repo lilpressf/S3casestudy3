@@ -1,136 +1,269 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Innovatech Admin</title>
+  <meta charset="UTF-8" />
+  <title>Innovatech Employee Ops</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
       --bg: #0f172a;
-      --card: #111827;
+      --bg-alt: #020617;
+      --card: #020617;
+      --border: #1e293b;
       --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.15);
+      --muted: #64748b;
       --text: #e2e8f0;
-      --muted: #94a3b8;
-      --danger: #f87171;
-      --success: #34d399;
+      --danger: #f97373;
+      --success: #4ade80;
+      --warning: #facc15;
     }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
-      font-family: "Segoe UI", Arial, sans-serif;
-      background: radial-gradient(circle at 20% 20%, #1e293b, #0f172a 40%), #0f172a;
-      color: var(--text);
       min-height: 100vh;
-    }
-    header {
-      padding: 20px 32px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        sans-serif;
+      background: radial-gradient(circle at top, #1e293b 0, #020617 55%);
+      color: var(--text);
       display: flex;
-      align-items: center;
+      flex-direction: column;
+    }
+
+    header {
+      display: flex;
       justify-content: space-between;
-      border-bottom: 1px solid #1f2937;
-      background: rgba(15, 23, 42, 0.85);
+      align-items: center;
+      padding: 18px 24px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+      backdrop-filter: blur(16px);
+      background: linear-gradient(
+        90deg,
+        rgba(15, 23, 42, 0.9),
+        rgba(15, 23, 42, 0.5),
+        rgba(15, 23, 42, 0.9)
+      );
       position: sticky;
       top: 0;
-      backdrop-filter: blur(8px);
+      z-index: 10;
     }
+
     .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-    }
-    .pill {
-      padding: 6px 12px;
-      border-radius: 999px;
-      background: #0ea5e9;
-      color: #0b1024;
-      font-weight: 700;
+      gap: 10px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
       font-size: 12px;
+      color: var(--muted);
     }
+
+    .pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: radial-gradient(circle at top left, #38bdf8, #0ea5e9);
+      color: #0b1120;
+      font-weight: 600;
+      box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.9);
+    }
+
+    .badge {
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
     main {
-      padding: 28px 32px 48px;
+      flex: 1;
       display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
       gap: 18px;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      padding: 24px;
+      max-width: 1100px;
+      width: 100%;
+      margin: 0 auto;
     }
+
     .card {
-      background: var(--card);
-      border: 1px solid #1f2937;
-      border-radius: 12px;
-      padding: 18px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      background: radial-gradient(circle at top left, #0b1120, #020617);
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow:
+        0 18px 45px rgba(15, 23, 42, 0.9),
+        0 0 0 1px rgba(15, 23, 42, 0.85);
+      padding: 18px 18px 16px;
+      position: relative;
+      overflow: hidden;
     }
-    h2 {
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(
+        circle at top right,
+        rgba(56, 189, 248, 0.12),
+        transparent 55%
+      );
+      opacity: 0.75;
+      pointer-events: none;
+    }
+
+    .card h2 {
       margin: 0 0 12px;
-      font-size: 18px;
+      font-size: 16px;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
+
+    .card h2 span {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--muted);
+      text-transform: none;
+      letter-spacing: normal;
+    }
+
     label {
       display: block;
-      margin: 10px 0 4px;
-      color: var(--muted);
-      font-size: 13px;
-    }
-    input, select {
-      width: 100%;
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: 1px solid #1f2937;
-      background: #0b1224;
-      color: var(--text);
-    }
-    button {
-      margin-top: 12px;
-      padding: 10px 14px;
-      border: none;
-      border-radius: 8px;
-      background: linear-gradient(90deg, #0ea5e9, #22d3ee);
-      color: #0b1024;
-      font-weight: 700;
-      cursor: pointer;
-      width: 100%;
-    }
-    button.secondary {
-      background: #1f2937;
-      color: var(--text);
-      border: 1px solid #283548;
-    }
-    .status {
-      margin-top: 10px;
-      font-size: 13px;
-    }
-    .status.success { color: var(--success); }
-    .status.error { color: var(--danger); }
-    .list {
-      display: grid;
-      gap: 10px;
-      margin-top: 10px;
-    }
-    .item {
-      padding: 10px;
-      border-radius: 8px;
-      background: #0b1224;
-      border: 1px solid #1f2937;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .badge {
-      padding: 4px 8px;
-      border-radius: 999px;
-      background: #0f172a;
-      border: 1px solid #1f2937;
+      margin: 8px 0 4px;
       font-size: 12px;
       color: var(--muted);
     }
+
+    input,
+    select {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: linear-gradient(145deg, #020617, #020617);
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease,
+        background-color 0.15s ease,
+        transform 0.05s ease;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow:
+        0 0 0 1px rgba(56, 189, 248, 0.5),
+        0 0 0 8px rgba(56, 189, 248, 0.08);
+      background: #020617;
+      transform: translateY(-0.5px);
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: none;
+      background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+      color: #0b1120;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow:
+        0 12px 25px rgba(56, 189, 248, 0.35),
+        0 0 0 1px rgba(8, 47, 73, 0.9);
+      transition:
+        transform 0.08s ease,
+        box-shadow 0.08s ease,
+        filter 0.08s ease,
+        background-position 0.08s ease;
+      background-size: 140% 140%;
+      background-position: 0% 50%;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow:
+        0 18px 40px rgba(56, 189, 248, 0.4),
+        0 0 0 1px rgba(8, 47, 73, 0.9);
+      filter: brightness(1.03);
+      background-position: 100% 50%;
+    }
+
+    button:active {
+      transform: translateY(0);
+      box-shadow:
+        0 8px 20px rgba(15, 23, 42, 0.95),
+        0 0 0 1px rgba(15, 23, 42, 0.9);
+    }
+
+    .status {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .status span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .activity-log {
+      max-height: 380px;
+      overflow-y: auto;
+      padding-right: 4px;
+      margin-top: 4px;
+    }
+
+    .activity-item {
+      padding: 6px 0;
+      border-bottom: 1px dashed rgba(15, 23, 42, 0.85);
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .badge-pill {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      background: rgba(15, 23, 42, 0.85);
+    }
+
     footer {
       text-align: center;
       padding: 18px;
       color: var(--muted);
       font-size: 12px;
     }
+
     @media (max-width: 640px) {
-      header { flex-direction: column; align-items: flex-start; gap: 8px; }
-      main { grid-template-columns: 1fr; padding: 18px; }
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      main {
+        grid-template-columns: 1fr;
+        padding: 18px;
+      }
     }
   </style>
 </head>
@@ -144,8 +277,9 @@
   </header>
 
   <main>
+    <!-- Onboarding -->
     <section class="card" id="onboard-card">
-      <h2>Onboard Employee</h2>
+      <h2>Onboard Employee <span>Creates identity, workspace & workstation</span></h2>
       <label for="on-name">Name</label>
       <input id="on-name" placeholder="Jane Doe" />
       <label for="on-email">Email</label>
@@ -153,41 +287,68 @@
       <label for="on-dept">Department</label>
       <select id="on-dept">
         <option>Engineering</option>
-        <option>IT</option>
-        <option>Finance</option>
-        <option>HR</option>
         <option>Sales</option>
+        <option>HR</option>
       </select>
       <label for="on-role">Role</label>
-      <input id="on-role" placeholder="Developer" />
-      <button id="onboard-btn">Create account & workspace</button>
-      <div class="status" id="on-status"></div>
+      <input id="on-role" placeholder="Senior Engineer" />
+
+      <button id="onboard-btn">Onboard Employee</button>
+      <div class="status">
+        <span id="on-status"></span>
+      </div>
     </section>
 
+    <!-- Activity / Workstations -->
+    <section class="card" id="activity-card">
+      <h2>Activity & Workstations <span>Audit log and VM controls</span></h2>
+
+      <div class="activity-log" id="activity-list"></div>
+
+      <hr style="border: none; border-top: 1px dashed rgba(30,64,175,0.7); margin: 10px -4px 8px;" />
+
+      <h3 style="font-size: 13px; margin: 4px 0 6px; color: #e5e7eb;">Workstations</h3>
+
+      <label for="ws-email">Employee Email</label>
+      <input id="ws-email" placeholder="jane@example.com" />
+
+      <label for="ws-dept">Department</label>
+      <select id="ws-dept">
+        <option>Engineering</option>
+        <option>Sales</option>
+        <option>HR</option>
+      </select>
+
+      <button id="ws-create-btn">Create Workstation</button>
+      <button id="ws-terminate-btn" style="margin-left: 8px; background: linear-gradient(135deg, #f97373, #ef4444); box-shadow: 0 12px 24px rgba(248,113,113,0.4), 0 0 0 1px rgba(127,29,29,0.9);">Terminate Workstation</button>
+
+      <div class="status">
+        <span id="ws-status"></span>
+      </div>
+    </section>
+
+    <!-- Offboarding -->
     <section class="card" id="offboard-card">
-      <h2>Offboard Employee</h2>
+      <h2>Offboard Employee <span>Revokes access & tears down resources</span></h2>
       <label for="off-email">Email</label>
       <input id="off-email" placeholder="jane@example.com" />
-      <button class="secondary" id="offboard-btn">Disable account & reclaim workspace</button>
-      <div class="status" id="off-status"></div>
-    </section>
 
-    <section class="card">
-      <h2>Recent Activity</h2>
-      <div class="list" id="activity-list">
-        <div class="item"><span>Loaded dashboard</span><span class="badge">info</span></div>
+      <button id="offboard-btn">Offboard Employee</button>
+      <div class="status">
+        <span id="off-status"></span>
       </div>
     </section>
   </main>
+
   <footer>Requests are sent to /api/* on the same host. Authentication is handled by Cognito via the load balancer.</footer>
 
   <script>
-    async function api(path, payload) {
+    async function api(path, payload, method = 'POST') {
       const headers = { 'Content-Type': 'application/json' };
       const res = await fetch('/api' + path, {
-        method: 'POST',
+        method,
         headers,
-        body: JSON.stringify(payload)
+        body: method === 'GET' ? null : JSON.stringify(payload || {})
       });
       if (!res.ok) {
         const text = await res.text();
@@ -198,49 +359,78 @@
 
     const onStatus = document.getElementById('on-status');
     const offStatus = document.getElementById('off-status');
+    const wsStatus = document.getElementById('ws-status');
     const activity = document.getElementById('activity-list');
 
     function pushActivity(message, level = 'info') {
       const node = document.createElement('div');
-      node.className = 'item';
-      node.innerHTML = `<span>${message}</span><span class="badge">${level}</span>`;
+      node.className = 'activity-item';
+      const badgeColor =
+        level === 'error' ? 'var(--danger)' :
+        level === 'warning' ? 'var(--warning)' :
+        'var(--accent)';
+      node.innerHTML =
+        `<span>${message}</span><span class="badge-pill" style="color:${badgeColor};border-color:${badgeColor};">${level}</span>`;
       activity.prepend(node);
     }
 
     document.getElementById('onboard-btn').onclick = async () => {
-      onStatus.textContent = 'Submitting...';
-      onStatus.className = 'status';
+      const name = document.getElementById('on-name').value;
+      const email = document.getElementById('on-email').value;
+      const department = document.getElementById('on-dept').value;
+      const role = document.getElementById('on-role').value;
+
+      onStatus.textContent = 'Submitting onboarding...';
       try {
-        const payload = {
-          name: document.getElementById('on-name').value,
-          email: document.getElementById('on-email').value,
-          department: document.getElementById('on-dept').value,
-          role: document.getElementById('on-role').value
-        };
-        await api('/onboard', payload);
+        const res = await api('/onboard', { name, email, department, role });
         onStatus.textContent = 'Onboarding started';
-        onStatus.classList.add('success');
-        pushActivity(`Onboarding requested for ${payload.email}`, 'success');
+        pushActivity(`Onboarding started for ${email}`, 'info');
       } catch (err) {
-        onStatus.textContent = err.message;
-        onStatus.classList.add('error');
-        pushActivity(`Onboarding failed: ${err.message}`, 'error');
+        onStatus.textContent = 'Error submitting onboarding';
+        pushActivity(`Onboarding error: ${err.message}`, 'error');
       }
     };
 
     document.getElementById('offboard-btn').onclick = async () => {
-      offStatus.textContent = 'Submitting...';
-      offStatus.className = 'status';
+      const email = document.getElementById('off-email').value;
+      offStatus.textContent = 'Submitting offboarding...';
       try {
-        const payload = { email: document.getElementById('off-email').value };
-        await api('/offboard', payload);
+        const res = await api('/offboard', { email });
         offStatus.textContent = 'Offboarding started';
-        offStatus.classList.add('success');
-        pushActivity(`Offboarding requested for ${payload.email}`, 'warning');
+        pushActivity(`Offboarding started for ${email}`, 'warning');
       } catch (err) {
-        offStatus.textContent = err.message;
-        offStatus.classList.add('error');
-        pushActivity(`Offboarding failed: ${err.message}`, 'error');
+        offStatus.textContent = 'Error submitting offboarding';
+        pushActivity(`Offboarding error: ${err.message}`, 'error');
+      }
+    };
+
+    document.getElementById('ws-create-btn').onclick = async () => {
+      const email = document.getElementById('ws-email').value;
+      const dept = document.getElementById('ws-dept').value;
+      wsStatus.textContent = 'Creating workstation...';
+      try {
+        const res = await api('/workstation/create', { email, department: dept });
+        wsStatus.textContent = 'Workstation creation started';
+        pushActivity(`Workstation requested for ${email}`, 'info');
+        if (res.detail && res.detail.workstation && res.detail.workstation.instance_id) {
+          pushActivity(`Instance ID: ${res.detail.workstation.instance_id}`, 'info');
+        }
+      } catch (err) {
+        wsStatus.textContent = 'Error creating workstation';
+        pushActivity(`Workstation create error: ${err.message}`, 'error');
+      }
+    };
+
+    document.getElementById('ws-terminate-btn').onclick = async () => {
+      const email = document.getElementById('ws-email').value;
+      wsStatus.textContent = 'Terminating workstation...';
+      try {
+        const res = await api('/workstation/terminate', { email });
+        wsStatus.textContent = 'Workstation termination started';
+        pushActivity(`Workstation termination requested for ${email}`, 'warning');
+      } catch (err) {
+        wsStatus.textContent = 'Error terminating workstation';
+        pushActivity(`Workstation terminate error: ${err.message}`, 'error');
       }
     };
   </script>
