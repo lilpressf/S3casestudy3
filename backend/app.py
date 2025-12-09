@@ -18,9 +18,6 @@ COGNITO_POOL_ID = os.getenv("COGNITO_POOL_ID")
 COGNITO_CLIENT_ID = os.getenv("COGNITO_CLIENT_ID")
 COGNITO_REGION = os.getenv("AWS_REGION", "eu-central-1")
 
-# Set DISABLE_AUTH=true in the Deployment env to bypass auth for testing
-DISABLE_AUTH = os.getenv("DISABLE_AUTH", "false").lower() == "true"
-
 automator = Automation()
 
 # Simple in-memory JWKS cache
@@ -116,10 +113,6 @@ def verify_token(token: str):
 def require_auth(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        # Allow full bypass for local/testing if DISABLE_AUTH=true
-        if DISABLE_AUTH:
-            return fn(*args, **kwargs)
-
         if not COGNITO_POOL_ID or not COGNITO_CLIENT_ID:
             return jsonify({"error": "Auth not configured"}), 500
 
@@ -138,7 +131,8 @@ def require_auth(fn):
 
 @app.route("/api/health", methods=["GET"])
 def health():
-    return {"status": "ok", "auth_disabled": DISABLE_AUTH}, 200
+    # No bypass flag anymore
+    return {"status": "ok"}, 200
 
 
 @app.route("/api/debug-headers", methods=["GET"])
