@@ -18,6 +18,9 @@ COGNITO_POOL_ID = os.getenv("COGNITO_POOL_ID")
 COGNITO_CLIENT_ID = os.getenv("COGNITO_CLIENT_ID")
 COGNITO_REGION = os.getenv("AWS_REGION", "eu-central-1")
 
+# Set DISABLE_AUTH=true in the Deployment env to bypass auth for testing
+DISABLE_AUTH = os.getenv("DISABLE_AUTH", "false").lower() == "true"
+
 automator = Automation()
 
 # Simple in-memory JWKS cache
@@ -50,7 +53,10 @@ def get_jwks():
     if not COGNITO_POOL_ID:
         raise RuntimeError("COGNITO_POOL_ID is not configured")
 
-    url = f"https://cognito-idp.{COGNITO_REGION}.amazonaws.com/{COGNITO_POOL_ID}/.well-known/jwks.json"
+    url = (
+        f"https://cognito-idp.{COGNITO_REGION}.amazonaws.com/"
+        f"{COGNITO_POOL_ID}/.well-known/jwks.json"
+    )
     with urllib.request.urlopen(url) as resp:
         body = resp.read()
     jwks = json.loads(body.decode("utf-8"))
@@ -61,7 +67,11 @@ def get_jwks():
 
 
 def extract_token():
-    """Extract JWT from Authorization header or ALB OIDC header."""
+    """
+    Extract JWT from Authorization header or ALB OIDC headers.
+    We support multiple header shapes to handle ALB/Cognito variants.
+    """
+    # Standard Authorization header
     auth_header = request.headers.get("Authorization")
     if auth_header and auth_header.startswith("Bearer "):
         return auth_header.split(" ", 1)[1]
@@ -70,6 +80,11 @@ def extract_token():
     alb_oidc = request.headers.get("x-amzn-oidc-data")
     if alb_oidc:
         return alb_oidc
+
+    # Some configurations put the access token in this header
+    alb_access = request.headers.get("x-amzn-oidc-accesstoken")
+    if alb_access:
+        return alb_access
 
     raise ValueError("Missing or invalid Authorization header")
 
@@ -88,7 +103,10 @@ def verify_token(token: str):
             key,
             algorithms=["RS256"],
             audience=COGNITO_CLIENT_ID,
-            issuer=f"https://cognito-idp.{COGNITO_REGION}.amazonaws.com/{COGNITO_POOL_ID}",
+            issuer=(
+                f"https://cognito-idp.{COGNITO_REGION}.amazonaws.com/"
+                f"{COGNITO_POOL_ID}"
+            ),
         )
         return claims
     except JWTError as exc:
@@ -98,8 +116,13 @@ def verify_token(token: str):
 def require_auth(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
+        # Allow full bypass for local/testing if DISABLE_AUTH=true
+        if DISABLE_AUTH:
+            return fn(*args, **kwargs)
+
         if not COGNITO_POOL_ID or not COGNITO_CLIENT_ID:
             return jsonify({"error": "Auth not configured"}), 500
+
         try:
             token = extract_token()
             claims = verify_token(token)
@@ -107,6 +130,7 @@ def require_auth(fn):
             request.claims = claims
         except ValueError as err:
             return jsonify({"error": str(err)}), 401
+
         return fn(*args, **kwargs)
 
     return wrapper
@@ -114,7 +138,16 @@ def require_auth(fn):
 
 @app.route("/api/health", methods=["GET"])
 def health():
-    return {"status": "ok"}, 200
+    return {"status": "ok", "auth_disabled": DISABLE_AUTH}, 200
+
+
+@app.route("/api/debug-headers", methods=["GET"])
+def debug_headers():
+    """
+    Debug endpoint so we can see exactly what headers are arriving
+    from the ALB after Cognito auth.
+    """
+    return jsonify(dict(request.headers)), 200
 
 
 @app.route("/api/onboard", methods=["POST"])
@@ -222,9 +255,7 @@ def offboard():
 
     dynamodb_table(EMP_TABLE).update_item(
         Key={"employee_id": employee["employee_id"]},
-        UpdateExpression=(
-            "SET #s = :status, last_offboard_detail = :detail"
-        ),
+        UpdateExpression="SET #s = :status, last_offboard_detail = :detail",
         ExpressionAttributeNames={"#s": "status"},
         ExpressionAttributeValues={
             ":status": "offboard_submitted",
@@ -274,7 +305,7 @@ def create_workstation():
     ws = automator.create_workstation(email=email, department=department)
     detail = {"workstation": ws}
 
-    instance_id = ws.get("instance_id")
+    instance_id = ws.get("instance_id") if isinstance(ws, dict) else None
     if instance_id:
         dynamodb_table(EMP_TABLE).update_item(
             Key={"employee_id": employee["employee_id"]},
