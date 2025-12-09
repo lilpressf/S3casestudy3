@@ -15,22 +15,18 @@ spec:
       serviceAccountName: backend-sa
       containers:
         - name: backend
-          image: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/innovatech-backend:latest
+          image: 846244128735.dkr.ecr.eu-central-1.amazonaws.com/innovatech-backend:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 5000
           env:
             - name: AWS_REGION
-              value: <AWS_REGION>
+              value: eu-central-1
             - name: EMPLOYEE_TABLE
               value: innovatech-employees
             - name: AUDIT_TABLE
               value: innovatech-audit-logs
             - name: COGNITO_POOL_ID
-              value: <COGNITO_POOL_ID>
+              value: eu-central-1_BEC7JQwYd
             - name: COGNITO_CLIENT_ID
-              value: <COGNITO_CLIENT_ID>
-            - name: WORKSPACES_DIRECTORY_ID
-              value: <WORKSPACES_DIRECTORY_ID>
-            - name: WORKSPACES_BUNDLE_ID
-              value: <WORKSPACES_BUNDLE_ID>
+              value: 68nlqmca9tb48urul3fpvu58e
