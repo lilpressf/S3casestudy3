@@ -13,6 +13,8 @@ spec:
     metadata:
       labels:
         app: innovatech-frontend
+      annotations:
+        rollme: "DUMMY"
     spec:
       containers:
         - name: frontend

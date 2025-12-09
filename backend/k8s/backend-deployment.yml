@@ -11,6 +11,8 @@ spec:
     metadata:
       labels:
         app: innovatech-backend
+      annotations:
+        rollme: "DUMMY"
     spec:
       serviceAccountName: backend-sa
       containers:

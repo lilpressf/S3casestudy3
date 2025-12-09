@@ -150,6 +150,7 @@ jobs:
       COGNITO_POOL_DOMAIN: ${{ needs.infra.outputs.cognito_user_pool_domain }}
       COGNITO_POOL_ARN: ${{ needs.infra.outputs.cognito_user_pool_arn }}
       ACM_CERT_ARN: ${{ needs.infra.outputs.acm_certificate_arn }}
+      IMAGE_TAG: ${{ github.sha }}
 
     steps:
       - name: Checkout
@@ -205,6 +206,11 @@ jobs:
 
           # backend serviceAccount IRSA role
           sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/backend/serviceaccount.yml
+
+          # rollout triggers
+          sed -i "s|rollme: \"DUMMY\"|rollme: \"${IMAGE_TAG}\"|g" k8s-temp/backend/backend-deployment.yml
+          sed -i "s|rollme: \"DUMMY\"|rollme: \"${IMAGE_TAG}\"|g" k8s-temp/frontend/deployment.yml
+
 
       - name: Apply manifests
         run: |
