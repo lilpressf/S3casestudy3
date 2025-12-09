@@ -6,6 +6,7 @@ on:
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  
 
 jobs:
   # 1) TERRAFORM: EKS, Cognito, ACM, etc.
@@ -147,8 +148,6 @@ jobs:
       COGNITO_POOL_DOMAIN: ${{ needs.infra.outputs.cognito_user_pool_domain }}
       COGNITO_POOL_ARN: ${{ needs.infra.outputs.cognito_user_pool_arn }}
       ACM_CERT_ARN: ${{ needs.infra.outputs.acm_certificate_arn }}
-      WORKSPACES_DIRECTORY_ID: ${{ secrets.WORKSPACES_DIRECTORY_ID }}
-      WORKSPACES_BUNDLE_ID: ${{ secrets.WORKSPACES_BUNDLE_ID }}
 
     steps:
       - name: Checkout
@@ -193,7 +192,6 @@ jobs:
           sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/frontend/ingress.yml
           sed -i "s|<COGNITO_CLIENT_SECRET>|${COGNITO_CLIENT_SECRET}|g" k8s-temp/frontend/ingress.yml
           sed -i "s|<COGNITO_POOL_DOMAIN>|${COGNITO_POOL_DOMAIN}|g" k8s-temp/frontend/ingress.yml
-          sed -i "s|<ACM_CERT_ARN>|${ACM_CERT_ARN}|g" k8s-temp/frontend/ingress.yml
 
           # BACKEND deployment templating
           sed -i "s|<AWS_REGION>|${AWS_REGION}|g" k8s-temp/backend/backend-deployment.yml
@@ -202,9 +200,6 @@ jobs:
           sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/backend/backend-deployment.yml
           sed -i "s|<WORKSPACES_DIRECTORY_ID>|${WORKSPACES_DIRECTORY_ID}|g" k8s-temp/backend/backend-deployment.yml
           sed -i "s|<WORKSPACES_BUNDLE_ID>|${WORKSPACES_BUNDLE_ID}|g" k8s-temp/backend/backend-deployment.yml
-
-          # BACKEND ingress templating (ACM)
-          sed -i "s|<ACM_CERT_ARN>|${ACM_CERT_ARN}|g" k8s-temp/backend/backend-ingress.yml
 
           # backend serviceAccount IRSA role
           sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/backend/serviceaccount.yml

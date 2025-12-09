@@ -51,16 +51,10 @@ resource "aws_iam_role_policy" "backend_dynamodb_policy" {
           "cognito-idp:AdminGetUser",
           "cognito-idp:ListUsers"
         ],
-        Resource = aws_cognito_user_pool.portal.arn
-      },
-      {
-        Effect = "Allow",
-        Action = [
-          "workspaces:CreateWorkspaces",
-          "workspaces:TerminateWorkspaces",
-          "workspaces:DescribeWorkspaces"
-        ],
-        Resource = "*"
+        Resource = [
+          data.aws_cognito_user_pool.portal.arn,
+          "${data.aws_cognito_user_pool.portal.arn}/*"
+        ]
       },
       {
         Effect = "Allow",

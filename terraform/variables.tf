@@ -40,14 +40,8 @@ variable "acm_certificate_arn" {
   default     = ""
 }
 
-variable "workspaces_directory_id" {
-  description = "AWS WorkSpaces Directory ID"
+variable "ssh_cidr" {
+  description = "CIDR used for SSH/RDP admin access to workstations"
   type        = string
-  default     = ""
-}
-
-variable "workspaces_bundle_id" {
-  description = "AWS WorkSpaces Bundle ID"
-  type        = string
-  default     = ""
+  default     = "0.0.0.0/0" 
 }
