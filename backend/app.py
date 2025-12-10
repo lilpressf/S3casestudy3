@@ -202,7 +202,7 @@ def debug_headers():
 
 @app.route("/api/onboard", methods=["POST"])
 @with_error_handling
-@require_admin
+@require_auth
 def onboard():
     data = request.json or {}
     required = ["name", "email", "department", "role"]
@@ -294,7 +294,7 @@ def onboard():
 
 @app.route("/api/offboard", methods=["POST"])
 @with_error_handling
-@require_admin
+@require_auth
 def offboard():
     data = request.json or {}
     email = data.get("email")
@@ -368,7 +368,7 @@ def offboard():
 
 @app.route("/api/workstation/create", methods=["POST"])
 @with_error_handling
-@require_admin
+@require_auth
 def create_workstation():
     data = request.json or {}
     email = data.get("email")
@@ -435,7 +435,7 @@ def create_workstation():
 
 @app.route("/api/workstation/terminate", methods=["POST"])
 @with_error_handling
-@require_admin
+@require_auth
 def terminate_workstation():
     data = request.json or {}
     email = data.get("email")
