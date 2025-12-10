@@ -38,6 +38,7 @@ resource "aws_iam_role_policy" "backend_dynamodb_policy" {
         ],
         Resource = [
           aws_dynamodb_table.employees.arn,
+          "${aws_dynamodb_table.employees.arn}/index/email-index",
           aws_dynamodb_table.audit_logs.arn
         ]
       },
