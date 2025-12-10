@@ -74,7 +74,7 @@ resource "aws_iam_role_policy" "workstation_directory_access" {
           "ds:CreateComputer",
           "ds:DescribeDirectories"
         ],
-        Resource = aws_directory_service_directory.workstations.arn
+        Resource = "arn:aws:ds:${var.aws_region}:${data.aws_caller_identity.current.account_id}:directory/${aws_directory_service_directory.workstations.id}"
       }
     ]
   })
