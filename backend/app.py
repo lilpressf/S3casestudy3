@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from boto3.dynamodb.conditions import Key
 from db import dynamodb_table
 from automation import Automation
+from botocore.exceptions import BotoCoreError, ClientError
 import os
 import uuid
 import time
@@ -41,7 +42,12 @@ def write_audit(action, email, status="started", detail=None):
     }
     if detail is not None:
         audit["detail"] = detail
-    dynamodb_table(AUDIT_TABLE).put_item(Item=audit)
+    try:
+        dynamodb_table(AUDIT_TABLE).put_item(Item=audit)
+    except (ClientError, BotoCoreError) as exc:
+        # Best-effort only; if DynamoDB is temporarily unreachable,
+        # do not fail the whole request.
+        print(f"Audit write failed: {exc!r}")
 
 
 def get_jwks():
@@ -220,7 +226,10 @@ def onboard():
         "status": "pending_onboarding",
     }
 
-    dynamodb_table(EMP_TABLE).put_item(Item=item)
+    try:
+        dynamodb_table(EMP_TABLE).put_item(Item=item)
+    except (ClientError, BotoCoreError) as exc:
+        print(f"Employee put_item failed: {exc!r}")
     write_audit("onboard", data["email"], status="started")
 
     identity = automator.onboard_identity(
@@ -269,18 +278,21 @@ def onboard():
 
     # Persist workstation instance id and status
     new_status = "onboard_failed" if has_error else "onboard_submitted"
-    dynamodb_table(EMP_TABLE).update_item(
-        Key={"employee_id": employee_id},
-        UpdateExpression=(
-            "SET #s = :status, detail = :detail, workstation_instance_id = :iid"
-        ),
-        ExpressionAttributeNames={"#s": "status"},
-        ExpressionAttributeValues={
-            ":status": new_status,
-            ":detail": json.dumps(detail),
-            ":iid": workstation_instance_id,
-        },
-    )
+    try:
+        dynamodb_table(EMP_TABLE).update_item(
+            Key={"employee_id": employee_id},
+            UpdateExpression=(
+                "SET #s = :status, detail = :detail, workstation_instance_id = :iid"
+            ),
+            ExpressionAttributeNames={"#s": "status"},
+            ExpressionAttributeValues={
+                ":status": new_status,
+                ":detail": json.dumps(detail),
+                ":iid": workstation_instance_id,
+            },
+        )
+    except (ClientError, BotoCoreError) as exc:
+        print(f"Employee update_item failed: {exc!r}")
 
     write_audit(
         "onboard",
@@ -310,12 +322,16 @@ def offboard():
         return jsonify({"error": "Missing email"}), 400
 
     # Lookup employee record by email (GSI)
-    resp = dynamodb_table(EMP_TABLE).query(
-        IndexName="email-index",
-        KeyConditionExpression=Key("email").eq(email),
-        Limit=1,
-    )
-    items = resp.get("Items", [])
+    try:
+        resp = dynamodb_table(EMP_TABLE).query(
+            IndexName="email-index",
+            KeyConditionExpression=Key("email").eq(email),
+            Limit=1,
+        )
+        items = resp.get("Items", [])
+    except (ClientError, BotoCoreError) as exc:
+        print(f"Employee query in offboard failed: {exc!r}")
+        return jsonify({"error": "Employee database unavailable"}), 503
     if not items:
         return jsonify({"error": "Employee not found"}), 404
 
@@ -346,15 +362,18 @@ def offboard():
     if workstation_status_value == "error":
         has_error = True
 
-    dynamodb_table(EMP_TABLE).update_item(
-        Key={"employee_id": employee["employee_id"]},
-        UpdateExpression="SET #s = :status, last_offboard_detail = :detail",
-        ExpressionAttributeNames={"#s": "status"},
-        ExpressionAttributeValues={
-            ":status": "offboard_failed" if has_error else "offboard_submitted",
-            ":detail": json.dumps(detail),
-        },
-    )
+    try:
+        dynamodb_table(EMP_TABLE).update_item(
+            Key={"employee_id": employee["employee_id"]},
+            UpdateExpression="SET #s = :status, last_offboard_detail = :detail",
+            ExpressionAttributeNames={"#s": "status"},
+            ExpressionAttributeValues={
+                ":status": "offboard_failed" if has_error else "offboard_submitted",
+                ":detail": json.dumps(detail),
+            },
+        )
+    except (ClientError, BotoCoreError) as exc:
+        print(f"Employee update_item in offboard failed: {exc!r}")
 
     write_audit(
         "offboard",
@@ -385,12 +404,16 @@ def create_workstation():
         return jsonify({"error": "Missing email or department"}), 400
 
     # Validate that the employee exists
-    resp = dynamodb_table(EMP_TABLE).query(
-        IndexName="email-index",
-        KeyConditionExpression=Key("email").eq(email),
-        Limit=1,
-    )
-    items = resp.get("Items", [])
+    try:
+        resp = dynamodb_table(EMP_TABLE).query(
+            IndexName="email-index",
+            KeyConditionExpression=Key("email").eq(email),
+            Limit=1,
+        )
+        items = resp.get("Items", [])
+    except (ClientError, BotoCoreError) as exc:
+        print(f"Employee query in workstation/create failed: {exc!r}")
+        return jsonify({"error": "Employee database unavailable"}), 503
     if not items:
         return jsonify({"error": "Employee not found"}), 404
 
@@ -418,11 +441,14 @@ def create_workstation():
             500,
         )
 
-    dynamodb_table(EMP_TABLE).update_item(
-        Key={"employee_id": employee["employee_id"]},
-        UpdateExpression="SET workstation_instance_id = :iid",
-        ExpressionAttributeValues={":iid": instance_id},
-    )
+    try:
+        dynamodb_table(EMP_TABLE).update_item(
+            Key={"employee_id": employee["employee_id"]},
+            UpdateExpression="SET workstation_instance_id = :iid",
+            ExpressionAttributeValues={":iid": instance_id},
+        )
+    except (ClientError, BotoCoreError) as exc:
+        print(f"Employee update_item in workstation/create failed: {exc!r}")
 
     write_audit(
         "create_workstation",
@@ -452,12 +478,16 @@ def terminate_workstation():
         return jsonify({"error": "Missing email"}), 400
 
     if not instance_id:
-        resp = dynamodb_table(EMP_TABLE).query(
-            IndexName="email-index",
-            KeyConditionExpression=Key("email").eq(email),
-            Limit=1,
-        )
-        items = resp.get("Items", [])
+        try:
+            resp = dynamodb_table(EMP_TABLE).query(
+                IndexName="email-index",
+                KeyConditionExpression=Key("email").eq(email),
+                Limit=1,
+            )
+            items = resp.get("Items", [])
+        except (ClientError, BotoCoreError) as exc:
+            print(f"Employee query in workstation/terminate failed: {exc!r}")
+            return jsonify({"error": "Employee database unavailable"}), 503
         if not items:
             return jsonify({"error": "Employee not found"}), 404
         employee = items[0]
