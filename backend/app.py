@@ -95,7 +95,7 @@ def verify_token(token: str):
         claims = jwt.decode(
             token,
             key,
-            algorithms=["RS256"],
+            algorithms=["RS256", "ES256"],
             audience=COGNITO_CLIENT_ID,
             issuer=(
                 f"https://cognito-idp.{COGNITO_REGION}.amazonaws.com/"
