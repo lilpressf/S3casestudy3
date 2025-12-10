@@ -45,49 +45,13 @@ class Automation:
         username = email
         temp_password = f"{uuid.uuid4()}Aa1!"
 
-        # 1) Cognito user (portal identity)
-        cognito_result: dict
-        if not self.user_pool_id:
-            cognito_result = {
-                "status": "skipped",
-                "reason": "No user pool configured",
-            }
-        else:
-            try:
-                self.cognito.admin_create_user(
-                    UserPoolId=self.user_pool_id,
-                    Username=username,
-                    TemporaryPassword=temp_password,
-                    UserAttributes=[
-                        {"Name": "email", "Value": email},
-                        {"Name": "email_verified", "Value": "true"},
-                        {"Name": "name", "Value": name},
-                    ],
-                    MessageAction="SUPPRESS",
-                )
-                if group:
-                    self.ensure_group(group)
-                    self.cognito.admin_add_user_to_group(
-                        UserPoolId=self.user_pool_id,
-                        Username=username,
-                        GroupName=group,
-                    )
-                cognito_result = {
-                    "status": "created",
-                    "username": username,
-                    "temp_password": temp_password,
-                }
-            except ClientError as exc:
-                code = exc.response.get("Error", {}).get("Code", "")
-                if code == "UsernameExistsException":
-                    cognito_result = {
-                        "status": "exists",
-                        "username": username,
-                    }
-                else:
-                    cognito_result = {"status": "error", "error": str(exc)}
-            except BotoCoreError as exc:
-                cognito_result = {"status": "error", "error": str(exc)}
+        # 1) Cognito user (portal identity) – for this project,
+        # employee portal logins are handled via AD only. Admin
+        # Cognito users are created manually, not by this flow.
+        cognito_result: dict = {
+            "status": "skipped",
+            "reason": "Employees are created only in Active Directory",
+        }
 
         # 2) Active Directory user (workstation logon)
         ad_result: dict
@@ -168,21 +132,12 @@ class Automation:
         """
         results = {}
 
-        # 1) Cognito
-        if not self.user_pool_id:
-            results["cognito"] = {
-                "status": "skipped",
-                "reason": "No user pool configured",
-            }
-        else:
-            try:
-                self.cognito.admin_disable_user(
-                    UserPoolId=self.user_pool_id,
-                    Username=email,
-                )
-                results["cognito"] = {"status": "disabled"}
-            except (ClientError, BotoCoreError) as exc:
-                results["cognito"] = {"status": "error", "error": str(exc)}
+        # 1) Cognito – admins are managed separately; employee
+        # accounts are only disabled in Active Directory.
+        results["cognito"] = {
+            "status": "skipped",
+            "reason": "Employees are disabled only in Active Directory",
+        }
 
         # 2) Active Directory
         if not (self.directory_id and self.directory_name and self.directory_admin_instance_id and self.directory_admin_password):
