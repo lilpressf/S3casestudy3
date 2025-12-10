@@ -66,6 +66,28 @@ resource "aws_iam_role_policy" "backend_dynamodb_policy" {
           "lambda:InvokeFunction"
         ],
         Resource = "*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "ec2:RunInstances",
+          "ec2:TerminateInstances",
+          "ec2:DescribeInstances",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeSecurityGroups"
+        ],
+        Resource = "*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "ssm:SendCommand"
+        ],
+        Resource = [
+          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:document/Workstation-Security-Baseline",
+          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:document/Workstation-Deploy-Apps",
+          "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/*"
+        ]
       }
     ]
   })

@@ -37,7 +37,7 @@ variable "private_subnet_b_cidr" {
 variable "acm_certificate_arn" {
   description = "ACM certificate ARN for ALB"
   type        = string
-  default     = ""
+  default     = "arn:aws:acm:eu-central-1:846244128735:certificate/7557e636-a570-45ef-a05c-9a5a9f0faaf6"
 }
 
 variable "ssh_cidr" {

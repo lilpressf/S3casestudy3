@@ -17,6 +17,11 @@ AUDIT_TABLE = os.getenv("AUDIT_TABLE", "innovatech-audit-logs")
 COGNITO_POOL_ID = os.getenv("COGNITO_POOL_ID")
 COGNITO_CLIENT_ID = os.getenv("COGNITO_CLIENT_ID")
 COGNITO_REGION = os.getenv("AWS_REGION", "eu-central-1")
+ADMIN_GROUPS = [
+    g.strip()
+    for g in os.getenv("ADMIN_GROUPS", "IT_Admin").split(",")
+    if g.strip()
+]
 
 automator = Automation()
 
@@ -123,6 +128,21 @@ def require_auth(fn):
     return wrapper
 
 
+def require_admin(fn):
+    @require_auth
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        claims = getattr(request, "claims", {}) or {}
+        groups = claims.get("cognito:groups", [])
+        if isinstance(groups, str):
+            groups = [groups]
+        if not any(g in ADMIN_GROUPS for g in groups):
+            return jsonify({"error": "Forbidden"}), 403
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
 @app.route("/api/health", methods=["GET"])
 def health():
     # No bypass flag anymore
@@ -130,6 +150,7 @@ def health():
 
 
 @app.route("/api/debug-headers", methods=["GET"])
+@require_auth
 def debug_headers():
     """
     Debug endpoint so we can see exactly what headers are arriving
@@ -139,7 +160,7 @@ def debug_headers():
 
 
 @app.route("/api/onboard", methods=["POST"])
-@require_auth
+@require_admin
 def onboard():
     data = request.json or {}
     required = ["name", "email", "department", "role"]
@@ -170,15 +191,34 @@ def onboard():
         department=data["department"],
     )
 
+    # Strip sensitive fields (like temporary passwords) from identity details
+    identity_safe = identity
+    if isinstance(identity_safe, dict):
+        identity_safe = dict(identity_safe)
+        identity_safe.pop("temp_password", None)
+
     workstation_instance_id = (
         workstation.get("instance_id") if isinstance(workstation, dict) else None
     )
     detail = {
-        "identity": identity,
+        "identity": identity_safe,
         "workstation": workstation,
     }
 
+    identity_status = (
+        identity.get("status") if isinstance(identity, dict) else None
+    )
+    workstation_status = (
+        workstation.get("status") if isinstance(workstation, dict) else None
+    )
+    has_error = False
+    if identity_status == "error":
+        has_error = True
+    if workstation_status in ("error", "skipped"):
+        has_error = True
+
     # Persist workstation instance id and status
+    new_status = "onboard_failed" if has_error else "onboard_submitted"
     dynamodb_table(EMP_TABLE).update_item(
         Key={"employee_id": employee_id},
         UpdateExpression=(
@@ -186,7 +226,7 @@ def onboard():
         ),
         ExpressionAttributeNames={"#s": "status"},
         ExpressionAttributeValues={
-            ":status": "onboard_submitted",
+            ":status": new_status,
             ":detail": json.dumps(detail),
             ":iid": workstation_instance_id,
         },
@@ -195,23 +235,23 @@ def onboard():
     write_audit(
         "onboard",
         data["email"],
-        status="submitted",
+        status="failed" if has_error else "submitted",
         detail=json.dumps(detail),
     )
-    return (
-        jsonify(
-            {
-                "message": "Onboarding started",
-                "employee_id": employee_id,
-                "detail": detail,
-            }
-        ),
-        201,
-    )
+    response_body = {
+        "employee_id": employee_id,
+        "detail": detail,
+    }
+    if has_error:
+        response_body["message"] = "Onboarding encountered errors"
+        return jsonify(response_body), 500
+    else:
+        response_body["message"] = "Onboarding started"
+        return jsonify(response_body), 201
 
 
 @app.route("/api/offboard", methods=["POST"])
-@require_auth
+@require_admin
 def offboard():
     data = request.json or {}
     email = data.get("email")
@@ -241,12 +281,26 @@ def offboard():
         "workstation": workstation_status,
     }
 
+    identity_status_value = (
+        identity_status.get("status") if isinstance(identity_status, dict) else None
+    )
+    workstation_status_value = (
+        workstation_status.get("status")
+        if isinstance(workstation_status, dict)
+        else None
+    )
+    has_error = False
+    if identity_status_value == "error":
+        has_error = True
+    if workstation_status_value in ("error", "skipped"):
+        has_error = True
+
     dynamodb_table(EMP_TABLE).update_item(
         Key={"employee_id": employee["employee_id"]},
         UpdateExpression="SET #s = :status, last_offboard_detail = :detail",
         ExpressionAttributeNames={"#s": "status"},
         ExpressionAttributeValues={
-            ":status": "offboard_submitted",
+            ":status": "offboard_failed" if has_error else "offboard_submitted",
             ":detail": json.dumps(detail),
         },
     )
@@ -254,23 +308,23 @@ def offboard():
     write_audit(
         "offboard",
         email,
-        status="submitted",
+        status="failed" if has_error else "submitted",
         detail=json.dumps(detail),
     )
-    return (
-        jsonify(
-            {
-                "message": "Offboarding started",
-                "email": email,
-                "detail": detail,
-            }
-        ),
-        200,
-    )
+    response_body = {
+        "email": email,
+        "detail": detail,
+    }
+    if has_error:
+        response_body["message"] = "Offboarding encountered errors"
+        return jsonify(response_body), 500
+    else:
+        response_body["message"] = "Offboarding started"
+        return jsonify(response_body), 200
 
 
 @app.route("/api/workstation/create", methods=["POST"])
-@require_auth
+@require_admin
 def create_workstation():
     data = request.json or {}
     email = data.get("email")
@@ -294,12 +348,29 @@ def create_workstation():
     detail = {"workstation": ws}
 
     instance_id = ws.get("instance_id") if isinstance(ws, dict) else None
-    if instance_id:
-        dynamodb_table(EMP_TABLE).update_item(
-            Key={"employee_id": employee["employee_id"]},
-            UpdateExpression="SET workstation_instance_id = :iid",
-            ExpressionAttributeValues={":iid": instance_id},
+    status = ws.get("status") if isinstance(ws, dict) else None
+    if not instance_id or status in ("error", "skipped"):
+        write_audit(
+            "create_workstation",
+            email,
+            status="failed",
+            detail=json.dumps(detail),
         )
+        return (
+            jsonify(
+                {
+                    "message": "Error creating workstation",
+                    "detail": detail,
+                }
+            ),
+            500,
+        )
+
+    dynamodb_table(EMP_TABLE).update_item(
+        Key={"employee_id": employee["employee_id"]},
+        UpdateExpression="SET workstation_instance_id = :iid",
+        ExpressionAttributeValues={":iid": instance_id},
+    )
 
     write_audit(
         "create_workstation",
@@ -319,7 +390,7 @@ def create_workstation():
 
 
 @app.route("/api/workstation/terminate", methods=["POST"])
-@require_auth
+@require_admin
 def terminate_workstation():
     data = request.json or {}
     email = data.get("email")
@@ -338,16 +409,41 @@ def terminate_workstation():
             return jsonify({"error": "Employee not found"}), 404
         employee = items[0]
         instance_id = employee.get("workstation_instance_id")
+        if not instance_id:
+            return (
+                jsonify(
+                    {
+                        "error": "No workstation_instance_id stored for employee",
+                    }
+                ),
+                400,
+            )
 
     ws_status = automator.terminate_workstation(instance_id)
     detail = {"workstation": ws_status}
 
+    status_value = (
+        ws_status.get("status") if isinstance(ws_status, dict) else None
+    )
     write_audit(
         "terminate_workstation",
         email,
-        status="submitted",
+        status="failed"
+        if status_value in ("error", "skipped")
+        else "submitted",
         detail=json.dumps(detail),
     )
+    if status_value in ("error", "skipped"):
+        return (
+            jsonify(
+                {
+                    "message": "Error terminating workstation",
+                    "detail": detail,
+                }
+            ),
+            500,
+        )
+
     return (
         jsonify(
             {

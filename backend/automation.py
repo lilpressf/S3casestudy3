@@ -13,6 +13,7 @@ class Automation:
         # AWS SDK clients
         self.cognito = boto3.client("cognito-idp", region_name=self.region)
         self.ec2 = boto3.client("ec2", region_name=self.region)
+        self.ssm = boto3.client("ssm", region_name=self.region)
 
         # For EC2 workstation provisioning
         self.workstation_lt_id = os.getenv("WORKSTATION_LT_ID", "")
@@ -109,9 +110,37 @@ class Automation:
                 ],
             )
             instance = resp["Instances"][0]
+            instance_id = instance["InstanceId"]
+
+            baseline_cmd_id = None
+            apps_cmd_id = None
+
+            try:
+                baseline_cmd = self.ssm.send_command(
+                    InstanceIds=[instance_id],
+                    DocumentName="Workstation-Security-Baseline",
+                    TimeoutSeconds=600,
+                )
+                baseline_cmd_id = baseline_cmd.get("Command", {}).get("CommandId")
+            except ClientError:
+                baseline_cmd_id = None
+
+            try:
+                apps_cmd = self.ssm.send_command(
+                    InstanceIds=[instance_id],
+                    DocumentName="Workstation-Deploy-Apps",
+                    Parameters={"Department": [department]},
+                    TimeoutSeconds=600,
+                )
+                apps_cmd_id = apps_cmd.get("Command", {}).get("CommandId")
+            except ClientError:
+                apps_cmd_id = None
+
             return {
                 "status": instance.get("State", {}).get("Name", "pending"),
-                "instance_id": instance["InstanceId"],
+                "instance_id": instance_id,
+                "baseline_command_id": baseline_cmd_id,
+                "apps_command_id": apps_cmd_id,
             }
         except ClientError as exc:
             return {"status": "error", "error": str(exc)}

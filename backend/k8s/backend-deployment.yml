@@ -27,24 +27,26 @@ spec:
 
       containers:
         - name: backend
-          image: 846244128735.dkr.ecr.eu-central-1.amazonaws.com/innovatech-backend:latest
+          image: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/innovatech-backend:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 5000
 
           env:
             - name: AWS_REGION
-              value: eu-central-1
+              value: <AWS_REGION>
             - name: EMPLOYEE_TABLE
               value: innovatech-employees
             - name: AUDIT_TABLE
               value: innovatech-audit-logs
             - name: COGNITO_POOL_ID
-              value: eu-central-1_BEC7JQwYd
+              value: <COGNITO_POOL_ID>
             - name: COGNITO_CLIENT_ID
-              value: 68nlqmca9tb48urul3fpvu58e
-            - name: COGNITO_JWKS_URL
-              value: https://cognito-idp.eu-central-1.amazonaws.com/eu-central-1_BEC7JQwYd/.well-known/jwks.json
+              value: <COGNITO_CLIENT_ID>
+            - name: WORKSTATION_LT_ID
+              value: <WORKSTATION_LT_ID>
+            - name: WORKSTATION_SUBNET_ID
+              value: <WORKSTATION_SUBNET_ID>
 
           # PROBES 
           readinessProbe:
