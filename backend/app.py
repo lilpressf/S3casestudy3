@@ -292,7 +292,7 @@ def offboard():
     has_error = False
     if identity_status_value == "error":
         has_error = True
-    if workstation_status_value in ("error", "skipped"):
+    if workstation_status_value == "error":
         has_error = True
 
     dynamodb_table(EMP_TABLE).update_item(

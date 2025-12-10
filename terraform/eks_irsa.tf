@@ -81,6 +81,13 @@ resource "aws_iam_role_policy" "backend_dynamodb_policy" {
       {
         Effect = "Allow",
         Action = [
+          "iam:PassRole"
+        ],
+        Resource = aws_iam_role.workstation_role.arn
+      },
+      {
+        Effect = "Allow",
+        Action = [
           "ssm:SendCommand"
         ],
         Resource = [
