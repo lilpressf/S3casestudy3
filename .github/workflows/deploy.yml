@@ -211,12 +211,6 @@ jobs:
           sed -i "s|rollme: \"DUMMY\"|rollme: \"${IMAGE_TAG}\"|g" k8s-temp/backend/backend-deployment.yml
           sed -i "s|rollme: \"DUMMY\"|rollme: \"${IMAGE_TAG}\"|g" k8s-temp/frontend/deployment.yml
 
-          
-          # apply IMAGE_TAG replacement
-          sed -i "s|<IMAGE_TAG>|${IMAGE_TAG}|g" k8s-temp/frontend/deployment.yml
-          sed -i "s|<IMAGE_TAG>|${IMAGE_TAG}|g" k8s-temp/backend/backend-deployment.yml
-
-
       - name: Apply manifests
         run: |
           kubectl apply -f k8s-temp/backend/

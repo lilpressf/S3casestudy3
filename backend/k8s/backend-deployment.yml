@@ -27,7 +27,7 @@ spec:
 
       containers:
         - name: backend
-          image: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/innovatech-backend:<IMAGE_TAG>
+          image: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/innovatech-backend:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 5000
