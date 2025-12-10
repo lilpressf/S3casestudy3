@@ -64,17 +64,22 @@ def get_jwks():
 
 
 def extract_token():
-    # Prefer access token
-    alb_access = request.headers.get("x-amzn-oidc-accesstoken")
-    if alb_access:
-        return alb_access
+    #Preferred Cognito ID token header injected by ALB
+    id_token = request.headers.get("x-amzn-oidc-data")
+    if id_token:
+        return id_token
 
-    # Fallback: Authorization header
+    # Fallback: Some configurations may still expose the access token
+    access_token = request.headers.get("x-amzn-oidc-accesstoken")
+    if access_token:
+        return access_token
+
+    # Final fallback: Authorization header
     auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
+    if auth_header and auth_header.lower().startswith("bearer "):
         return auth_header.split(" ", 1)[1]
 
-    raise ValueError("Missing access token")
+    return None
 
 
 
