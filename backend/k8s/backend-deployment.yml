@@ -32,3 +32,6 @@ spec:
               value: eu-central-1_BEC7JQwYd
             - name: COGNITO_CLIENT_ID
               value: 68nlqmca9tb48urul3fpvu58e
+            - name: COGNITO_JWKS_URL
+              value: https://cognito-idp.eu-central-1.amazonaws.com/eu-central-1_BEC7JQwYd/.well-known/jwks.json
+
