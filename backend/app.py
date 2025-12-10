@@ -64,26 +64,18 @@ def get_jwks():
 
 
 def extract_token():
-    """
-    Extract JWT from Authorization header or ALB OIDC headers.
-    We support multiple header shapes to handle ALB/Cognito variants.
-    """
-    # Standard Authorization header
-    auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        return auth_header.split(" ", 1)[1]
-
-    # ALB OIDC authentication can inject the token in x-amzn-oidc-data
-    alb_oidc = request.headers.get("x-amzn-oidc-data")
-    if alb_oidc:
-        return alb_oidc
-
-    # Some configurations put the access token in this header
+    # Prefer access token
     alb_access = request.headers.get("x-amzn-oidc-accesstoken")
     if alb_access:
         return alb_access
 
-    raise ValueError("Missing or invalid Authorization header")
+    # Fallback: Authorization header
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        return auth_header.split(" ", 1)[1]
+
+    raise ValueError("Missing access token")
+
 
 
 def verify_token(token: str):
