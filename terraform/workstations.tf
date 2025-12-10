@@ -60,6 +60,26 @@ resource "aws_iam_role_policy_attachment" "workstation_cloudwatch" {
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 }
 
+# Allow workstations (including the directory-admin instance) to join
+# the AWS Managed Microsoft AD directory via AWS-JoinDirectoryServiceDomain.
+resource "aws_iam_role_policy" "workstation_directory_access" {
+  role = aws_iam_role.workstation_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "ds:CreateComputer",
+          "ds:DescribeDirectories"
+        ],
+        Resource = aws_directory_service_directory.workstations.arn
+      }
+    ]
+  })
+}
+
 resource "aws_iam_instance_profile" "workstation_profile" {
   name = "workstation-ssm-profile"
   role = aws_iam_role.workstation_role.name
