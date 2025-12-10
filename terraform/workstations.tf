@@ -24,6 +24,11 @@ data "aws_ami" "windows_server" {
 # IAM Role / Instance Profile for SSM
 ########################################
 
+resource "aws_iam_service_linked_role" "ssm" {
+  aws_service_name = "ssm.amazonaws.com"
+  description      = "Service-linked role so Systems Manager can manage EC2 workstations"
+}
+
 resource "aws_iam_role" "workstation_role" {
   name = "workstation-ssm-role"
 
