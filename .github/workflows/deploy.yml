@@ -22,6 +22,10 @@ jobs:
       eks_node_group_name:       ${{ steps.tf_out.outputs.eks_node_group_name }}
       cognito_user_pool_id:      ${{ steps.tf_out.outputs.cognito_user_pool_id }}
       cognito_user_pool_client_id: ${{ steps.tf_out.outputs.cognito_user_pool_client_id }}
+      cognito_user_pool_client_secret: ${{ steps.tf_out.outputs.cognito_user_pool_client_secret }}
+      cognito_user_pool_domain:  ${{ steps.tf_out.outputs.cognito_user_pool_domain }}
+      cognito_user_pool_arn:     ${{ steps.tf_out.outputs.cognito_user_pool_arn }}
+      acm_certificate_arn:       ${{ steps.tf_out.outputs.acm_certificate_arn }}
 
     steps:
       - name: Checkout
@@ -62,6 +66,10 @@ jobs:
           echo "eks_node_group_name=$(terraform output -raw eks_node_group_name)" >> $GITHUB_OUTPUT
           echo "cognito_user_pool_id=$(terraform output -raw cognito_user_pool_id)" >> $GITHUB_OUTPUT
           echo "cognito_user_pool_client_id=$(terraform output -raw cognito_user_pool_client_id)" >> $GITHUB_OUTPUT
+          echo "cognito_user_pool_client_secret=$(terraform output -raw cognito_user_pool_client_secret)" >> $GITHUB_OUTPUT
+          echo "cognito_user_pool_domain=$(terraform output -raw cognito_user_pool_domain)" >> $GITHUB_OUTPUT
+          echo "cognito_user_pool_arn=$(terraform output -raw cognito_user_pool_arn)" >> $GITHUB_OUTPUT
+          echo "acm_certificate_arn=$(terraform output -raw acm_certificate_arn)" >> $GITHUB_OUTPUT
 
       - name: Install kubectl
         run: |
@@ -138,6 +146,10 @@ jobs:
       EKS_CLUSTER_NAME: ${{ needs.infra.outputs.eks_cluster_name }}
       COGNITO_POOL_ID: ${{ needs.infra.outputs.cognito_user_pool_id }}
       COGNITO_CLIENT_ID: ${{ needs.infra.outputs.cognito_user_pool_client_id }}
+      COGNITO_CLIENT_SECRET: ${{ needs.infra.outputs.cognito_user_pool_client_secret }}
+      COGNITO_POOL_DOMAIN: ${{ needs.infra.outputs.cognito_user_pool_domain }}
+      COGNITO_POOL_ARN: ${{ needs.infra.outputs.cognito_user_pool_arn }}
+      ACM_CERT_ARN: ${{ needs.infra.outputs.acm_certificate_arn }}
       IMAGE_TAG: ${{ github.sha }}
 
     steps:
