@@ -9,7 +9,7 @@ metadata:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-central-1:846244128735:certificate/68497f6d-e031-4660-9795-da723467053a
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-central-1:846244128735:certificate/7557e636-a570-45ef-a05c-9a5a9f0faaf6
     alb.ingress.kubernetes.io/ssl-redirect: "443"
     alb.ingress.kubernetes.io/group.name: innovatech
 
