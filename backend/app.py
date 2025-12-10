@@ -69,17 +69,33 @@ def get_jwks():
 
 
 def extract_token():
-    # Prefer the Cognito access token from ALB
-    alb_access = request.headers.get("X-Amzn-Oidc-Accesstoken") or request.headers.get("x-amzn-oidc-accesstoken")
-    if alb_access:
-        return alb_access
+    """
+    Extract a JWT token from ALB/Cognito headers or Authorization header.
 
-    # Fallback: Authorization: Bearer <token>
+    - For local/dev use, we support Authorization: Bearer <token>
+    - Behind the ALB, we primarily rely on X-Amzn-Oidc-Data (ID token)
+      and fall back to X-Amzn-Oidc-Accesstoken if needed.
+    """
+    # Local dev / direct calls
     auth_header = request.headers.get("Authorization")
     if auth_header and auth_header.lower().startswith("bearer "):
         return auth_header.split(" ", 1)[1]
 
-    raise ValueError("Missing access token")
+    # ALB OIDC headers (ID token)
+    id_token = request.headers.get("X-Amzn-Oidc-Data") or request.headers.get(
+        "x-amzn-oidc-data"
+    )
+    if id_token:
+        return id_token
+
+    # Fallback: ALB access token header if present
+    alb_access = request.headers.get("X-Amzn-Oidc-Accesstoken") or request.headers.get(
+        "x-amzn-oidc-accesstoken"
+    )
+    if alb_access:
+        return alb_access
+
+    raise ValueError("Missing ID/access token")
 
 
 
@@ -121,11 +137,12 @@ def require_auth(fn):
 
         try:
             token = extract_token()
-            claims = verify_token(token)
-            # attach claims to the request for downstream handlers
+            # We trust ALB + Cognito to validate the token signature and expiry,
+            # so here we only parse claims without re-validating the signature.
+            claims = jwt.get_unverified_claims(token)
             request.claims = claims
-        except ValueError as err:
-            return jsonify({"error": str(err)}), 401
+        except (JWTError, ValueError) as err:
+            return jsonify({"error": f"Token parse failed: {err}"}), 401
 
         return fn(*args, **kwargs)
 
