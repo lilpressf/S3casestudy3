@@ -64,22 +64,18 @@ def get_jwks():
 
 
 def extract_token():
-    #Preferred Cognito ID token header injected by ALB
-    id_token = request.headers.get("x-amzn-oidc-data")
-    if id_token:
-        return id_token
+    # Prefer the Cognito access token from ALB
+    alb_access = request.headers.get("X-Amzn-Oidc-Accesstoken") or request.headers.get("x-amzn-oidc-accesstoken")
+    if alb_access:
+        return alb_access
 
-    # Fallback: Some configurations may still expose the access token
-    access_token = request.headers.get("x-amzn-oidc-accesstoken")
-    if access_token:
-        return access_token
-
-    # Final fallback: Authorization header
+    # Fallback: Authorization: Bearer <token>
     auth_header = request.headers.get("Authorization")
     if auth_header and auth_header.lower().startswith("bearer "):
         return auth_header.split(" ", 1)[1]
 
-    return None
+    raise ValueError("Missing access token")
+
 
 
 
@@ -95,7 +91,7 @@ def verify_token(token: str):
         claims = jwt.decode(
             token,
             key,
-            algorithms=["RS256", "ES256"],
+            algorithms=["RS256"],
             audience=COGNITO_CLIENT_ID,
             issuer=(
                 f"https://cognito-idp.{COGNITO_REGION}.amazonaws.com/"
@@ -105,6 +101,7 @@ def verify_token(token: str):
         return claims
     except JWTError as exc:
         raise ValueError(f"Token validation failed: {exc}") from exc
+
 
 
 def require_auth(fn):
