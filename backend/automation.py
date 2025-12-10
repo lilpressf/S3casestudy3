@@ -62,7 +62,15 @@ class Automation:
                 "username": username,
                 "temp_password": temp_password,
             }
-        except (ClientError, BotoCoreError) as exc:
+        except ClientError as exc:
+            code = exc.response.get("Error", {}).get("Code", "")
+            if code == "UsernameExistsException":
+                return {
+                    "status": "exists",
+                    "username": username,
+                }
+            return {"status": "error", "error": str(exc)}
+        except BotoCoreError as exc:
             return {"status": "error", "error": str(exc)}
 
     def disable_identity(self, email: str):

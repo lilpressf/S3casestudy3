@@ -72,6 +72,7 @@ resource "aws_iam_role_policy" "backend_dynamodb_policy" {
         Action = [
           "ec2:RunInstances",
           "ec2:TerminateInstances",
+          "ec2:CreateTags",
           "ec2:DescribeInstances",
           "ec2:DescribeSubnets",
           "ec2:DescribeSecurityGroups"
