@@ -266,6 +266,8 @@ jobs:
           terraform_version: 1.8.5
 
       - name: Update Route53 DNS via Terraform
+        env:
+          TF_VAR_directory_admin_password: ${{ secrets.DIRECTORY_ADMIN_PASSWORD }}
         run: |
           echo "alb_dns_name = \"${ALB_HOST}\"" > terraform/alb.auto.tfvars
           terraform -chdir=terraform init -reconfigure
