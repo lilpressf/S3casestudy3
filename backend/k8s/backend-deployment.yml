@@ -2,25 +2,36 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: innovatech-backend
+  labels:
+    app: innovatech-backend
 spec:
   replicas: 1
+
+  # RECREATE
+  strategy:
+    type: Recreate
+
   selector:
     matchLabels:
       app: innovatech-backend
+
   template:
     metadata:
       labels:
         app: innovatech-backend
       annotations:
         rollme: "DUMMY"
+
     spec:
       serviceAccountName: backend-sa
+
       containers:
         - name: backend
-          image: 846244128735.dkr.ecr.eu-central-1.amazonaws.com/innovatech-backend:latest
+          image: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/innovatech-backend:<IMAGE_TAG>
           imagePullPolicy: Always
           ports:
             - containerPort: 5000
+
           env:
             - name: AWS_REGION
               value: eu-central-1
@@ -35,3 +46,17 @@ spec:
             - name: COGNITO_JWKS_URL
               value: https://cognito-idp.eu-central-1.amazonaws.com/eu-central-1_BEC7JQwYd/.well-known/jwks.json
 
+          # PROBES 
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 2
+            periodSeconds: 5
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 10

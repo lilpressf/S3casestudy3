@@ -6,19 +6,41 @@ metadata:
     app: innovatech-frontend
 spec:
   replicas: 1
+
+  # IMPORTANT
+  strategy:
+    type: Recreate
+
   selector:
     matchLabels:
       app: innovatech-frontend
+
   template:
     metadata:
       labels:
         app: innovatech-frontend
       annotations:
         rollme: "DUMMY"
+
     spec:
       containers:
         - name: frontend
-          image: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/innovatech-frontend:latest
+          image: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/innovatech-frontend:<IMAGE_TAG>
           imagePullPolicy: Always
           ports:
             - containerPort: 80
+
+          #HEALTH CHECKS
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 2
+            periodSeconds: 5
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10

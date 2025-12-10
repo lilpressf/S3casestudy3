@@ -6,10 +6,11 @@ on:
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-  
 
 jobs:
-  # 1) TERRAFORM: EKS, Cognito, ACM, etc.
+  # ------------------------------------------------------------
+  # 1) TERRAFORM: EKS, Cognito, ACM, networking
+  # ------------------------------------------------------------
   infra:
     runs-on: ubuntu-latest
     permissions:
@@ -17,15 +18,12 @@ jobs:
       contents: read
 
     outputs:
-      eks_cluster_name:          ${{ steps.tf_out.outputs.eks_cluster_name }}
-      eks_node_role_arn:         ${{ steps.tf_out.outputs.eks_node_role_arn }}
-      eks_node_group_name:       ${{ steps.tf_out.outputs.eks_node_group_name }}
-      cognito_user_pool_id:      ${{ steps.tf_out.outputs.cognito_user_pool_id }}
+      eks_cluster_name: ${{ steps.tf_out.outputs.eks_cluster_name }}
+      cognito_user_pool_id: ${{ steps.tf_out.outputs.cognito_user_pool_id }}
       cognito_user_pool_client_id: ${{ steps.tf_out.outputs.cognito_user_pool_client_id }}
-      cognito_user_pool_client_secret: ${{ steps.tf_out.outputs.cognito_user_pool_client_secret }}
-      cognito_user_pool_domain:  ${{ steps.tf_out.outputs.cognito_user_pool_domain }}
-      cognito_user_pool_arn:     ${{ steps.tf_out.outputs.cognito_user_pool_arn }}
-      acm_certificate_arn:       ${{ steps.tf_out.outputs.acm_certificate_arn }}
+      cognito_user_pool_domain: ${{ steps.tf_out.outputs.cognito_user_pool_domain }}
+      cognito_user_pool_arn: ${{ steps.tf_out.outputs.cognito_user_pool_arn }}
+      acm_certificate_arn: ${{ steps.tf_out.outputs.acm_certificate_arn }}
 
     steps:
       - name: Checkout
@@ -33,7 +31,7 @@ jobs:
         with:
           ref: test
 
-      - name: Configure AWS credentials (OIDC)
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -46,8 +44,6 @@ jobs:
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.8.5
 
       - name: Terraform Init
         working-directory: terraform
@@ -62,11 +58,8 @@ jobs:
         working-directory: terraform
         run: |
           echo "eks_cluster_name=$(terraform output -raw eks_cluster_name)" >> $GITHUB_OUTPUT
-          echo "eks_node_role_arn=$(terraform output -raw eks_node_role_arn)" >> $GITHUB_OUTPUT
-          echo "eks_node_group_name=$(terraform output -raw eks_node_group_name)" >> $GITHUB_OUTPUT
           echo "cognito_user_pool_id=$(terraform output -raw cognito_user_pool_id)" >> $GITHUB_OUTPUT
           echo "cognito_user_pool_client_id=$(terraform output -raw cognito_user_pool_client_id)" >> $GITHUB_OUTPUT
-          echo "cognito_user_pool_client_secret=$(terraform output -raw cognito_user_pool_client_secret)" >> $GITHUB_OUTPUT
           echo "cognito_user_pool_domain=$(terraform output -raw cognito_user_pool_domain)" >> $GITHUB_OUTPUT
           echo "cognito_user_pool_arn=$(terraform output -raw cognito_user_pool_arn)" >> $GITHUB_OUTPUT
           echo "acm_certificate_arn=$(terraform output -raw acm_certificate_arn)" >> $GITHUB_OUTPUT
@@ -80,25 +73,24 @@ jobs:
       - name: Configure kubeconfig
         run: |
           aws eks update-kubeconfig \
-            --region "$AWS_REGION" \
+            --region "${AWS_REGION}" \
             --name "${{ steps.tf_out.outputs.eks_cluster_name }}"
 
-      - name: Apply aws-auth ConfigMap
-        env:
-          EKS_NODE_ROLE_ARN: ${{ steps.tf_out.outputs.eks_node_role_arn }}
+      - name: Apply aws-auth
         run: |
           cd backend/k8s
           envsubst < aws-auth-template.yml > aws-auth.yml
           kubectl apply -f aws-auth.yml
 
-      - name: Wait for worker nodes Ready
+      - name: Wait for worker nodes
         run: kubectl wait --for=condition=Ready node --all --timeout=600s
 
       - name: Wait for AWS Load Balancer Controller
         run: kubectl -n kube-system rollout status deployment/aws-load-balancer-controller --timeout=600s
 
-
-  # 2) BUILD & PUSH DOCKER IMAGES
+  # ------------------------------------------------------------
+  # 2) BUILD & PUSH ECR IMAGES
+  # ------------------------------------------------------------
   build_and_push:
     runs-on: ubuntu-latest
     needs: infra
@@ -107,32 +99,31 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to ECR
-        uses: aws-actions/amazon-ecr-login@v2
+      - uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build Docker images
+      - name: Build images
         run: |
           docker build -t innovatech-backend ./backend
           docker build -t innovatech-frontend ./frontend
 
-      - name: Push Docker images
+      - name: Push images
         run: |
-          docker tag innovatech-backend ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/innovatech-backend:latest
-          docker tag innovatech-frontend ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/innovatech-frontend:latest
-          docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/innovatech-backend:latest
-          docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/innovatech-frontend:latest
+          docker tag innovatech-backend ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/innovatech-backend:${GITHUB_SHA}
+          docker tag innovatech-frontend ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/innovatech-frontend:${GITHUB_SHA}
 
+          docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/innovatech-backend:${GITHUB_SHA}
+          docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/innovatech-frontend:${GITHUB_SHA}
 
-  # 3) DEPLOY TO EKS + ALB + ROUTE53
+  # ------------------------------------------------------------
+  # 3) DEPLOY APP TO EKS + ALB + ROUTE53
+  # ------------------------------------------------------------
   deploy_app:
     runs-on: ubuntu-latest
     needs: [infra, build_and_push]
@@ -141,23 +132,13 @@ jobs:
       contents: read
 
     env:
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-      EKS_CLUSTER_NAME: ${{ needs.infra.outputs.eks_cluster_name }}
-      COGNITO_POOL_ID: ${{ needs.infra.outputs.cognito_user_pool_id }}
-      COGNITO_CLIENT_ID: ${{ needs.infra.outputs.cognito_user_pool_client_id }}
-      COGNITO_CLIENT_SECRET: ${{ needs.infra.outputs.cognito_user_pool_client_secret }}
-      COGNITO_POOL_DOMAIN: ${{ needs.infra.outputs.cognito_user_pool_domain }}
-      COGNITO_POOL_ARN: ${{ needs.infra.outputs.cognito_user_pool_arn }}
-      ACM_CERT_ARN: ${{ needs.infra.outputs.acm_certificate_arn }}
       IMAGE_TAG: ${{ github.sha }}
+      ACM_CERT_ARN: ${{ needs.infra.outputs.acm_certificate_arn }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -171,79 +152,60 @@ jobs:
       - name: Configure kubeconfig
         run: |
           aws eks update-kubeconfig \
-            --region "$AWS_REGION" \
-            --name "$EKS_CLUSTER_NAME"
+            --region "${AWS_REGION}" \
+            --name "${{ needs.infra.outputs.eks_cluster_name }}"
 
-      - name: Delete old ingresses (avoid stuck finalizers)
-        run: |
-          kubectl delete ingress frontend --ignore-not-found
-          kubectl delete ingress backend --ignore-not-found
-
-      - name: Template Kubernetes manifests
+      - name: Template manifests
         run: |
           mkdir -p k8s-temp/backend k8s-temp/frontend
-
           cp backend/k8s/*.yml k8s-temp/backend/
           cp frontend/k8s/*.yml k8s-temp/frontend/
 
-          # FRONTEND deployment image templating
+          # Replace image tag + account + region
           sed -i "s|<AWS_REGION>|${AWS_REGION}|g" k8s-temp/frontend/deployment.yml
           sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/frontend/deployment.yml
+          sed -i "s|<IMAGE_TAG>|${IMAGE_TAG}|g" k8s-temp/frontend/deployment.yml
 
-          # FRONTEND ingress templating (Cognito + ACM)
-          sed -i "s|<COGNITO_POOL_ARN>|${COGNITO_POOL_ARN}|g" k8s-temp/frontend/ingress.yml
-          sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/frontend/ingress.yml
-          sed -i "s|<COGNITO_CLIENT_SECRET>|${COGNITO_CLIENT_SECRET}|g" k8s-temp/frontend/ingress.yml
-          sed -i "s|<COGNITO_POOL_DOMAIN>|${COGNITO_POOL_DOMAIN}|g" k8s-temp/frontend/ingress.yml
-
-          # BACKEND deployment templating
           sed -i "s|<AWS_REGION>|${AWS_REGION}|g" k8s-temp/backend/backend-deployment.yml
           sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/backend/backend-deployment.yml
-          sed -i "s|<COGNITO_POOL_ID>|${COGNITO_POOL_ID}|g" k8s-temp/backend/backend-deployment.yml
-          sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/backend/backend-deployment.yml
-          sed -i "s|<WORKSPACES_DIRECTORY_ID>|${WORKSPACES_DIRECTORY_ID}|g" k8s-temp/backend/backend-deployment.yml
-          sed -i "s|<WORKSPACES_BUNDLE_ID>|${WORKSPACES_BUNDLE_ID}|g" k8s-temp/backend/backend-deployment.yml
+          sed -i "s|<IMAGE_TAG>|${IMAGE_TAG}|g" k8s-temp/backend/backend-deployment.yml
 
-          # backend serviceAccount IRSA role
-          sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/backend/serviceaccount.yml
+          sed -i "s|<ACM_CERT_ARN>|${ACM_CERT_ARN}|g" k8s-temp/frontend/ingress.yml
 
-          # rollout triggers
+          # Cognito templating
+          sed -i "s|<COGNITO_POOL_ARN>|${{ needs.infra.outputs.cognito_user_pool_arn }}|g" k8s-temp/frontend/ingress.yml
+          sed -i "s|<COGNITO_CLIENT_ID>|${{ needs.infra.outputs.cognito_user_pool_client_id }}|g" k8s-temp/frontend/ingress.yml
+          sed -i "s|<COGNITO_POOL_DOMAIN>|${{ needs.infra.outputs.cognito_user_pool_domain }}|g" k8s-temp/frontend/ingress.yml
+
+          # Inject rollout trigger
           sed -i "s|rollme: \"DUMMY\"|rollme: \"${IMAGE_TAG}\"|g" k8s-temp/backend/backend-deployment.yml
           sed -i "s|rollme: \"DUMMY\"|rollme: \"${IMAGE_TAG}\"|g" k8s-temp/frontend/deployment.yml
 
-
-      - name: Apply manifests
+      - name: Apply Manifests
         run: |
           kubectl apply -f k8s-temp/backend/
           kubectl apply -f k8s-temp/frontend/
 
-      - name: Wait for Deployments Ready
+      - name: Wait for deployments
         run: |
-          kubectl rollout status deployment/innovatech-backend --timeout=600s
-          kubectl rollout status deployment/innovatech-frontend --timeout=600s
+          kubectl rollout status deploy/innovatech-backend --timeout=600s
+          kubectl rollout status deploy/innovatech-frontend --timeout=600s
 
       - name: Wait for ALB hostname
         id: alb
         run: |
           for i in {1..40}; do
-            H=$(kubectl get ingress frontend -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+            H=$(kubectl get ingress frontend -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' || true)
             if [ -n "$H" ]; then
-              echo "ALB_HOST=$H"
-              echo "ALB_HOST=$H" >> "$GITHUB_ENV"
+              echo "ALB_HOST=$H" >> $GITHUB_ENV
               exit 0
             fi
-            echo "Waiting for ALB... ($i/40)"
+            echo "Waiting for ALB… ($i/40)"
             sleep 10
           done
-          echo "ERROR: ALB hostname not found"
           exit 1
 
-      - name: Setup Terraform for DNS
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.8.5
-
-      - name: Update Route53 DNS via Terraform
+      - name: Update Route53 DNS
         run: |
           echo "alb_dns_name = \"${ALB_HOST}\"" > terraform/alb.auto.tfvars
           terraform -chdir=terraform init -reconfigure
