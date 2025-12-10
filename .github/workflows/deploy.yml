@@ -148,8 +148,8 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
       EKS_CLUSTER_NAME: ${{ needs.infra.outputs.eks_cluster_name }}
-      # Backend needs the pool ID; keep from Terraform output
-      COGNITO_POOL_ID: ${{ needs.infra.outputs.cognito_user_pool_id }}
+      # Backend & Ingress use these; source from secrets for consistency
+      COGNITO_POOL_ID: ${{ secrets.COGNITO_POOL_ID }}
       # Ingress uses these values, sourced from GitHub secrets to avoid Terraform/sensitive-output quirks
       COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
       COGNITO_POOL_DOMAIN: ${{ secrets.COGNITO_POOL_DOMAIN }}
@@ -205,6 +205,9 @@ jobs:
 
           echo "==== Templated frontend Ingress ===="
           cat k8s-temp/frontend/ingress.yml
+
+          echo "==== Templated backend Deployment ===="
+          cat k8s-temp/backend/backend-deployment.yml
 
           # BACKEND deployment templating
           sed -i "s|<AWS_REGION>|${AWS_REGION}|g" k8s-temp/backend/backend-deployment.yml
