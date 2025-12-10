@@ -30,6 +30,7 @@ jobs:
           echo "TF_VAR_ssh_cidr=${{ secrets.SSH_CIDR }}" >> $GITHUB_ENV
           echo "TF_VAR_cognito_callback_urls=[\"http://localhost/\"]" >> $GITHUB_ENV
           echo "TF_VAR_cognito_logout_urls=[\"http://localhost/\"]" >> $GITHUB_ENV
+          echo "TF_VAR_directory_admin_password=${{ secrets.DIRECTORY_ADMIN_PASSWORD }}" >> $GITHUB_ENV
 
       # Install Terraform
       - name: Setup Terraform
