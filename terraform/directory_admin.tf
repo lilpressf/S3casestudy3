@@ -10,7 +10,8 @@ resource "aws_instance" "directory_admin" {
 
   iam_instance_profile = aws_iam_instance_profile.workstation_profile.name
 
-   user_data = base64encode(<<-EOF
+  # Plain text user data; AWS provider will base64-encode it automatically.
+  user_data = <<-EOF
     <powershell>
     # Install Active Directory PowerShell tools so SSM scripts can manage users
     try {
@@ -20,7 +21,6 @@ resource "aws_instance" "directory_admin" {
     }
     </powershell>
   EOF
-  )
 
   tags = {
     Name        = "directory-admin"
@@ -39,8 +39,8 @@ resource "aws_ssm_association" "directory_admin_join" {
   }
 
   parameters = {
-    directoryId   = [aws_directory_service_directory.workstations.id]
-    directoryName = [aws_directory_service_directory.workstations.name]
+    directoryId   = aws_directory_service_directory.workstations.id
+    directoryName = aws_directory_service_directory.workstations.name
   }
 
   depends_on = [
