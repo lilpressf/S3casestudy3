@@ -39,13 +39,17 @@ resource "aws_ssm_association" "directory_admin_join" {
   }
 
   parameters = {
-    directoryId   = aws_directory_service_directory.workstations.id
-    directoryName = aws_directory_service_directory.workstations.name
+    directoryId     = aws_directory_service_directory.workstations.id
+    directoryName   = aws_directory_service_directory.workstations.name
+    # Explicitly pass DNS IPs so the document can configure
+    # the network adapter for the Managed Microsoft AD.
+    dnsIpAddresses = jsonencode(aws_directory_service_directory.workstations.dns_ip_addresses)
   }
 
   depends_on = [
     aws_instance.directory_admin,
     aws_directory_service_directory.workstations,
     aws_iam_service_linked_role.ssm,
+    aws_vpc_dhcp_options_association.directory_dns,
   ]
 }
