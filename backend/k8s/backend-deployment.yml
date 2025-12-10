@@ -49,14 +49,14 @@ spec:
           # PROBES 
           readinessProbe:
             httpGet:
-              path: /
+              path: /api/health
               port: 5000
             initialDelaySeconds: 2
             periodSeconds: 5
 
           livenessProbe:
             httpGet:
-              path: /
+              path: /api/health
               port: 5000
             initialDelaySeconds: 10
             periodSeconds: 10
