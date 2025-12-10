@@ -22,7 +22,7 @@ metadata:
     alb.ingress.kubernetes.io/auth-idp-cognito: >
       {"UserPoolArn":"arn:aws:cognito-idp:eu-central-1:846244128735:userpool/eu-central-1_BEC7JQwYd",
        "UserPoolClientId":"68nlqmca9tb48urul3fpvu58e",
-       "UserPoolDomain":"innovatech-b37ae2b2"}
+       "UserPoolDomain":"innovatech-portal"}
 
 spec:
   rules:
