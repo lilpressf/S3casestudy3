@@ -49,7 +49,10 @@ resource "aws_iam_role_policy" "backend_dynamodb_policy" {
           "cognito-idp:AdminAddUserToGroup",
           "cognito-idp:CreateGroup",
           "cognito-idp:AdminGetUser",
-          "cognito-idp:ListUsers"
+          "cognito-idp:ListUsers",
+          "cognito-idp:GetGroup",
+          "cognito-idp:ListGroups",
+          "cognito-idp:AdminListGroupsForUser"
         ],
         Resource = [
           data.aws_cognito_user_pool.portal.arn,
