@@ -258,6 +258,7 @@ resource "aws_ssm_document" "deploy_applications" {
               choco install -y adobereader
               choco install -y zoom
               choco install -y slack
+              choco install -y vscode
 
               switch ($Department) {
                   {($_ -eq "Engineering") -or ($_ -eq "engineering")} {

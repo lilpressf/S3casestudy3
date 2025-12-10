@@ -47,6 +47,14 @@ spec:
               value: <WORKSTATION_LT_ID>
             - name: WORKSTATION_SUBNET_ID
               value: <WORKSTATION_SUBNET_ID>
+            - name: DIRECTORY_ID
+              value: <DIRECTORY_ID>
+            - name: DIRECTORY_NAME
+              value: <DIRECTORY_NAME>
+            - name: DIRECTORY_ADMIN_INSTANCE_ID
+              value: <DIRECTORY_ADMIN_INSTANCE_ID>
+            - name: DIRECTORY_ADMIN_PASSWORD
+              value: <DIRECTORY_ADMIN_PASSWORD>
 
           # PROBES 
           readinessProbe:

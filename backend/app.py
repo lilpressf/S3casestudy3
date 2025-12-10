@@ -236,8 +236,16 @@ def onboard():
     # Strip sensitive fields (like temporary passwords) from identity details
     identity_safe = identity
     if isinstance(identity_safe, dict):
+        # shallow copy
         identity_safe = dict(identity_safe)
+        # remove any obvious temp password fields
         identity_safe.pop("temp_password", None)
+        for section in ("cognito", "directory"):
+            section_val = identity_safe.get(section)
+            if isinstance(section_val, dict):
+                cleaned = dict(section_val)
+                cleaned.pop("temp_password", None)
+                identity_safe[section] = cleaned
 
     workstation_instance_id = (
         workstation.get("instance_id") if isinstance(workstation, dict) else None

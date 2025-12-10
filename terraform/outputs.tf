@@ -70,3 +70,15 @@ output "workstation_subnet_id" {
   value = aws_subnet.private_a.id
 }
 
+output "directory_id" {
+  value = aws_directory_service_directory.workstations.id
+}
+
+output "directory_name" {
+  value = aws_directory_service_directory.workstations.name
+}
+
+output "directory_admin_instance_id" {
+  value = aws_instance.directory_admin.id
+}
+

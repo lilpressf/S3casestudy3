@@ -28,6 +28,9 @@ jobs:
       acm_certificate_arn:         ${{ steps.tf_out.outputs.acm_certificate_arn }}
       workstation_launch_template_id: ${{ steps.tf_out.outputs.workstation_launch_template_id }}
       workstation_subnet_id:       ${{ steps.tf_out.outputs.workstation_subnet_id }}
+      directory_id:                ${{ steps.tf_out.outputs.directory_id }}
+      directory_name:              ${{ steps.tf_out.outputs.directory_name }}
+      directory_admin_instance_id: ${{ steps.tf_out.outputs.directory_admin_instance_id }}
 
     steps:
       - name: Checkout
@@ -43,6 +46,7 @@ jobs:
         run: |
           echo "TF_VAR_ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}" >> $GITHUB_ENV
           echo "TF_VAR_ssh_cidr=${{ secrets.SSH_CIDR }}" >> $GITHUB_ENV
+          echo "TF_VAR_directory_admin_password=${{ secrets.DIRECTORY_ADMIN_PASSWORD }}" >> $GITHUB_ENV
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -72,6 +76,9 @@ jobs:
           echo "acm_certificate_arn=$(terraform output -raw acm_certificate_arn)" >> $GITHUB_OUTPUT
           echo "workstation_launch_template_id=$(terraform output -raw workstation_launch_template_id)" >> $GITHUB_OUTPUT
           echo "workstation_subnet_id=$(terraform output -raw workstation_subnet_id)" >> $GITHUB_OUTPUT
+          echo "directory_id=$(terraform output -raw directory_id)" >> $GITHUB_OUTPUT
+          echo "directory_name=$(terraform output -raw directory_name)" >> $GITHUB_OUTPUT
+          echo "directory_admin_instance_id=$(terraform output -raw directory_admin_instance_id)" >> $GITHUB_OUTPUT
 
       - name: Install kubectl
         run: |
@@ -155,6 +162,10 @@ jobs:
       ACM_CERT_ARN: ${{ secrets.ACM_CERT_ARN }}
       WORKSTATION_LT_ID: ${{ needs.infra.outputs.workstation_launch_template_id }}
       WORKSTATION_SUBNET_ID: ${{ needs.infra.outputs.workstation_subnet_id }}
+      DIRECTORY_ID: ${{ needs.infra.outputs.directory_id }}
+      DIRECTORY_NAME: ${{ needs.infra.outputs.directory_name }}
+      DIRECTORY_ADMIN_INSTANCE_ID: ${{ needs.infra.outputs.directory_admin_instance_id }}
+      DIRECTORY_ADMIN_PASSWORD: ${{ secrets.DIRECTORY_ADMIN_PASSWORD }}
       IMAGE_TAG: ${{ github.sha }}
 
     steps:
@@ -211,9 +222,10 @@ jobs:
           sed -i "s|<COGNITO_CLIENT_ID>|${COGNITO_CLIENT_ID}|g" k8s-temp/backend/backend-deployment.yml
           sed -i "s|<WORKSTATION_LT_ID>|${WORKSTATION_LT_ID}|g" k8s-temp/backend/backend-deployment.yml
           sed -i "s|<WORKSTATION_SUBNET_ID>|${WORKSTATION_SUBNET_ID}|g" k8s-temp/backend/backend-deployment.yml
-
-          echo "==== Templated backend Deployment ===="
-          cat k8s-temp/backend/backend-deployment.yml
+          sed -i "s|<DIRECTORY_ID>|${DIRECTORY_ID}|g" k8s-temp/backend/backend-deployment.yml
+          sed -i "s|<DIRECTORY_NAME>|${DIRECTORY_NAME}|g" k8s-temp/backend/backend-deployment.yml
+          sed -i "s|<DIRECTORY_ADMIN_INSTANCE_ID>|${DIRECTORY_ADMIN_INSTANCE_ID}|g" k8s-temp/backend/backend-deployment.yml
+          sed -i "s|<DIRECTORY_ADMIN_PASSWORD>|${DIRECTORY_ADMIN_PASSWORD}|g" k8s-temp/backend/backend-deployment.yml
 
           # backend serviceAccount IRSA role
           sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s-temp/backend/serviceaccount.yml

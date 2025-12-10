@@ -45,3 +45,15 @@ variable "ssh_cidr" {
   type        = string
   default     = "0.0.0.0/0" 
 }
+
+variable "directory_domain_name" {
+  description = "FQDN for the AWS Managed Microsoft AD directory"
+  type        = string
+  default     = "corp.innovatech.local"
+}
+
+variable "directory_admin_password" {
+  description = "Admin password for the AWS Managed Microsoft AD directory"
+  type        = string
+  sensitive   = true
+}
