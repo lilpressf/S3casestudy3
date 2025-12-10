@@ -102,6 +102,19 @@ resource "aws_launch_template" "workstation" {
     # Set timezone
     Set-TimeZone -Id "W. Europe Standard Time"
 
+    # Ensure SSM Agent is installed and running so the instance shows up in Systems Manager
+    $region = "${var.aws_region}"
+    $ssmInstaller = "$env:TEMP\\AmazonSSMAgentSetup.exe"
+    $ssmUrl = "https://s3.$region.amazonaws.com/amazon-ssm-$region/latest/windows_amd64/AmazonSSMAgentSetup.exe"
+    try {
+      Invoke-WebRequest -Uri $ssmUrl -OutFile $ssmInstaller -UseBasicParsing
+      Start-Process -FilePath $ssmInstaller -ArgumentList "/S" -Wait
+      Set-Service -Name "AmazonSSMAgent" -StartupType Automatic -ErrorAction SilentlyContinue
+      Start-Service -Name "AmazonSSMAgent" -ErrorAction SilentlyContinue
+    } catch {
+      Write-Host "Failed to install/start SSM Agent: $_"
+    }
+
     # Install CloudWatch Agent
     $agentUrl = "https://s3.amazonaws.com/amazoncloudwatch-agent/windows/amd64/latest/amazon-cloudwatch-agent.msi"
     $agentPath = "$env:TEMP\\amazon-cloudwatch-agent.msi"

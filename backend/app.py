@@ -85,8 +85,8 @@ def extract_token():
 
 
 def verify_token(token: str):
-    jwks = get_jwks()
     try:
+        jwks = get_jwks()
         unverified = jwt.get_unverified_header(token)
         kid = unverified.get("kid")
         key = next((k for k in jwks["keys"] if k.get("kid") == kid), None)
@@ -105,6 +105,10 @@ def verify_token(token: str):
         )
         return claims
     except JWTError as exc:
+        raise ValueError(f"Token validation failed: {exc}") from exc
+    except Exception as exc:  # noqa: BLE001
+        # Normalize any other errors (network, parsing, etc.) into a ValueError
+        # so require_auth can always surface a 401 with a readable message.
         raise ValueError(f"Token validation failed: {exc}") from exc
 
 
@@ -149,13 +153,12 @@ def with_error_handling(fn):
         try:
             return fn(*args, **kwargs)
         except Exception as exc:  # noqa: BLE001
-            # Surface the error to the client as JSON so it is easier to debug.
-            # In production you could strip "detail" or map to a generic message.
             return (
                 jsonify(
                     {
                         "error": "Internal server error",
-                        "detail": str(exc),
+                        "detail": repr(exc),
+                        "exception_type": type(exc).__name__,
                     }
                 ),
                 500,
