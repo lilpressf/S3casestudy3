@@ -2,7 +2,7 @@ import os
 import uuid
 
 import boto3
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, BotoCoreError
 
 
 class Automation:
@@ -62,7 +62,7 @@ class Automation:
                 "username": username,
                 "temp_password": temp_password,
             }
-        except ClientError as exc:
+        except (ClientError, BotoCoreError) as exc:
             return {"status": "error", "error": str(exc)}
 
     def disable_identity(self, email: str):
@@ -74,7 +74,7 @@ class Automation:
                 Username=email,
             )
             return {"status": "disabled"}
-        except ClientError as exc:
+        except (ClientError, BotoCoreError) as exc:
             return {"status": "error", "error": str(exc)}
 
     # ------------- EC2 Workstations -------------
@@ -122,7 +122,7 @@ class Automation:
                     TimeoutSeconds=600,
                 )
                 baseline_cmd_id = baseline_cmd.get("Command", {}).get("CommandId")
-            except ClientError:
+            except (ClientError, BotoCoreError):
                 baseline_cmd_id = None
 
             try:
@@ -133,7 +133,7 @@ class Automation:
                     TimeoutSeconds=600,
                 )
                 apps_cmd_id = apps_cmd.get("Command", {}).get("CommandId")
-            except ClientError:
+            except (ClientError, BotoCoreError):
                 apps_cmd_id = None
 
             return {
@@ -142,7 +142,7 @@ class Automation:
                 "baseline_command_id": baseline_cmd_id,
                 "apps_command_id": apps_cmd_id,
             }
-        except ClientError as exc:
+        except (ClientError, BotoCoreError) as exc:
             return {"status": "error", "error": str(exc)}
 
     def terminate_workstation(self, instance_id: str):
@@ -151,5 +151,5 @@ class Automation:
         try:
             self.ec2.terminate_instances(InstanceIds=[instance_id])
             return {"status": "terminating"}
-        except ClientError as exc:
+        except (ClientError, BotoCoreError) as exc:
             return {"status": "error", "error": str(exc)}
