@@ -143,6 +143,27 @@ def require_admin(fn):
     return wrapper
 
 
+def with_error_handling(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as exc:  # noqa: BLE001
+            # Surface the error to the client as JSON so it is easier to debug.
+            # In production you could strip "detail" or map to a generic message.
+            return (
+                jsonify(
+                    {
+                        "error": "Internal server error",
+                        "detail": str(exc),
+                    }
+                ),
+                500,
+            )
+
+    return wrapper
+
+
 @app.route("/api/health", methods=["GET"])
 def health():
     # No bypass flag anymore
@@ -160,6 +181,7 @@ def debug_headers():
 
 
 @app.route("/api/onboard", methods=["POST"])
+@with_error_handling
 @require_admin
 def onboard():
     data = request.json or {}
@@ -251,6 +273,7 @@ def onboard():
 
 
 @app.route("/api/offboard", methods=["POST"])
+@with_error_handling
 @require_admin
 def offboard():
     data = request.json or {}
@@ -324,6 +347,7 @@ def offboard():
 
 
 @app.route("/api/workstation/create", methods=["POST"])
+@with_error_handling
 @require_admin
 def create_workstation():
     data = request.json or {}
@@ -390,6 +414,7 @@ def create_workstation():
 
 
 @app.route("/api/workstation/terminate", methods=["POST"])
+@with_error_handling
 @require_admin
 def terminate_workstation():
     data = request.json or {}
