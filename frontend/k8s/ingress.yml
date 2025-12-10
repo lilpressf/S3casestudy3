@@ -13,7 +13,7 @@ metadata:
     alb.ingress.kubernetes.io/ssl-redirect: "443"
     alb.ingress.kubernetes.io/group.name: innovatech
 
-    # --- Cognito Auth ---
+    # Cognito Auth
     alb.ingress.kubernetes.io/auth-type: cognito
     alb.ingress.kubernetes.io/auth-on-unauthenticated-request: authenticate
     alb.ingress.kubernetes.io/auth-scope: openid
@@ -23,6 +23,7 @@ metadata:
       {"UserPoolArn":"arn:aws:cognito-idp:eu-central-1:846244128735:userpool/eu-central-1_BEC7JQwYd",
        "UserPoolClientId":"68nlqmca9tb48urul3fpvu58e",
        "UserPoolDomain":"innovatech-b37ae2b2"}
+
 spec:
   rules:
   - host: portal.daanwelten.nl
@@ -35,3 +36,11 @@ spec:
             name: frontend
             port:
               number: 80
+
+      - path: /api/
+        pathType: Prefix
+        backend:
+          service:
+            name: backend
+            port:
+              number: 5000
