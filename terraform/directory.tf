@@ -1,6 +1,4 @@
-########################################
-# AWS Managed Microsoft AD for Workstations
-########################################
+# AWS Managed Microsoft AD 
 
 resource "aws_directory_service_directory" "workstations" {
   name     = var.directory_domain_name

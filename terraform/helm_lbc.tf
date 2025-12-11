@@ -11,7 +11,6 @@ resource "helm_release" "aws_load_balancer_controller" {
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
-  # Keep this version aligned with the IAM policy file you downloaded
   version    = "1.10.1"
   namespace  = "kube-system"
 

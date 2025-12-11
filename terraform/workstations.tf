@@ -92,7 +92,7 @@ resource "aws_iam_instance_profile" "workstation_profile" {
 resource "aws_launch_template" "workstation" {
   name_prefix   = "workstation-"
   image_id      = data.aws_ami.windows_server.id
-  instance_type = "t3.micro" # adjust if needed
+  instance_type = "t3.micro" 
 
   iam_instance_profile {
     name = aws_iam_instance_profile.workstation_profile.name
