@@ -41,9 +41,9 @@ resource "aws_ssm_association" "directory_admin_join" {
   parameters = {
     directoryId     = aws_directory_service_directory.workstations.id
     directoryName   = aws_directory_service_directory.workstations.name
-    # Explicitly pass DNS IPs so the document can configure
-    # the network adapter for the Managed Microsoft AD.
-    dnsIpAddresses = jsonencode(aws_directory_service_directory.workstations.dns_ip_addresses)
+    # Pass directory DNS IPs as a comma-separated string.
+    # AWS-JoinDirectoryServiceDomain treats this as a StringList.
+    dnsIpAddresses = join(",", aws_directory_service_directory.workstations.dns_ip_addresses)
   }
 
   depends_on = [
