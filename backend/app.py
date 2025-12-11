@@ -259,25 +259,29 @@ def onboard():
     workstation_instance_id = (
         workstation.get("instance_id") if isinstance(workstation, dict) else None
     )
+
     detail = {
         "identity": identity_safe,
         "workstation": workstation,
     }
-
     identity_status = (
         identity.get("status") if isinstance(identity, dict) else None
     )
     workstation_status = (
         workstation.get("status") if isinstance(workstation, dict) else None
     )
+
     has_error = False
     if identity_status == "error":
         has_error = True
-    if workstation_status in ("error", "skipped"):
+    if workstation_status == "error":
         has_error = True
 
-    # Persist workstation instance id and status
+    if workstation_status == "skipped":
+        has_error = True
+
     new_status = "onboard_failed" if has_error else "onboard_submitted"
+
     try:
         dynamodb_table(EMP_TABLE).update_item(
             Key={"employee_id": employee_id},
@@ -321,7 +325,7 @@ def offboard():
     if not email:
         return jsonify({"error": "Missing email"}), 400
 
-    # Lookup employee record by email (GSI)
+    db_unavailable = False
     try:
         resp = dynamodb_table(EMP_TABLE).query(
             IndexName="email-index",
@@ -331,13 +335,14 @@ def offboard():
         items = resp.get("Items", [])
     except (ClientError, BotoCoreError) as exc:
         print(f"Employee query in offboard failed: {exc!r}")
-        return jsonify({"error": "Employee database unavailable"}), 503
-    if not items:
+        db_unavailable = True
+        items = []
+    if not items and not db_unavailable:
         return jsonify({"error": "Employee not found"}), 404
 
-    employee = items[0]
-    workstation_instance_id = data.get("workstation_instance_id") or employee.get(
-        "workstation_instance_id", ""
+    employee = items[0] if items else None
+    workstation_instance_id = data.get("workstation_instance_id") or (
+        employee.get("workstation_instance_id", "") if employee else ""
     )
 
     write_audit("offboard", email, status="started")
@@ -403,7 +408,7 @@ def create_workstation():
     if not email or not department:
         return jsonify({"error": "Missing email or department"}), 400
 
-    # Validate that the employee exists
+    db_unavailable = False
     try:
         resp = dynamodb_table(EMP_TABLE).query(
             IndexName="email-index",
@@ -413,11 +418,12 @@ def create_workstation():
         items = resp.get("Items", [])
     except (ClientError, BotoCoreError) as exc:
         print(f"Employee query in workstation/create failed: {exc!r}")
-        return jsonify({"error": "Employee database unavailable"}), 503
-    if not items:
+        db_unavailable = True
+        items = []
+    if not items and not db_unavailable:
         return jsonify({"error": "Employee not found"}), 404
 
-    employee = items[0]
+    employee = items[0] if items else None
 
     ws = automator.create_workstation(email=email, department=department)
     detail = {"workstation": ws}
@@ -441,14 +447,15 @@ def create_workstation():
             500,
         )
 
-    try:
-        dynamodb_table(EMP_TABLE).update_item(
-            Key={"employee_id": employee["employee_id"]},
-            UpdateExpression="SET workstation_instance_id = :iid",
-            ExpressionAttributeValues={":iid": instance_id},
-        )
-    except (ClientError, BotoCoreError) as exc:
-        print(f"Employee update_item in workstation/create failed: {exc!r}")
+    if employee:
+        try:
+            dynamodb_table(EMP_TABLE).update_item(
+                Key={"employee_id": employee["employee_id"]},
+                UpdateExpression="SET workstation_instance_id = :iid",
+                ExpressionAttributeValues={":iid": instance_id},
+            )
+        except (ClientError, BotoCoreError) as exc:
+            print(f"Employee update_item in workstation/create failed: {exc!r}")
 
     write_audit(
         "create_workstation",
@@ -478,6 +485,7 @@ def terminate_workstation():
         return jsonify({"error": "Missing email"}), 400
 
     if not instance_id:
+        db_unavailable = False
         try:
             resp = dynamodb_table(EMP_TABLE).query(
                 IndexName="email-index",
@@ -487,11 +495,12 @@ def terminate_workstation():
             items = resp.get("Items", [])
         except (ClientError, BotoCoreError) as exc:
             print(f"Employee query in workstation/terminate failed: {exc!r}")
-            return jsonify({"error": "Employee database unavailable"}), 503
-        if not items:
+            db_unavailable = True
+            items = []
+        if not items and not db_unavailable:
             return jsonify({"error": "Employee not found"}), 404
-        employee = items[0]
-        instance_id = employee.get("workstation_instance_id")
+        employee = items[0] if items else None
+        instance_id = employee.get("workstation_instance_id") if employee else None
         if not instance_id:
             return (
                 jsonify(
