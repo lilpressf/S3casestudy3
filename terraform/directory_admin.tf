@@ -41,8 +41,9 @@ resource "aws_ssm_association" "directory_admin_join" {
   parameters = {
     directoryId     = aws_directory_service_directory.workstations.id
     directoryName   = aws_directory_service_directory.workstations.name
-    # Pass directory DNS IPs as a list; SSM treats this as StringList.
-    dnsIpAddresses = aws_directory_service_directory.workstations.dns_ip_addresses
+    # Pass a single DNS IP as a plain string; the SSM document
+    # expects one IPv4 address matching an IP regex, not a list.
+    dnsIpAddresses = tolist(aws_directory_service_directory.workstations.dns_ip_addresses)[0]
   }
 
   depends_on = [
