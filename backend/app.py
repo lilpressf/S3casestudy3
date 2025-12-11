@@ -310,10 +310,12 @@ def onboard():
     }
     if has_error:
         response_body["message"] = "Onboarding encountered errors"
-        return jsonify(response_body), 500
-    else:
-        response_body["message"] = "Onboarding started"
+        # Still return 201 so the portal flow continues,
+        # even if some automation steps hit errors.
         return jsonify(response_body), 201
+
+    response_body["message"] = "Onboarding started"
+    return jsonify(response_body), 201
 
 
 @app.route("/api/offboard", methods=["POST"])
@@ -392,10 +394,10 @@ def offboard():
     }
     if has_error:
         response_body["message"] = "Offboarding encountered errors"
-        return jsonify(response_body), 500
-    else:
-        response_body["message"] = "Offboarding started"
         return jsonify(response_body), 200
+
+    response_body["message"] = "Offboarding started"
+    return jsonify(response_body), 200
 
 
 @app.route("/api/workstation/create", methods=["POST"])
@@ -437,15 +439,12 @@ def create_workstation():
             status="failed",
             detail=json.dumps(detail),
         )
-        return (
-            jsonify(
-                {
-                    "message": "Error creating workstation",
-                    "detail": detail,
-                }
-            ),
-            500,
-        )
+        return jsonify(
+            {
+                "message": "Error creating workstation",
+                "detail": detail,
+            }
+        ), 200
 
     if employee:
         try:
@@ -520,21 +519,16 @@ def terminate_workstation():
     write_audit(
         "terminate_workstation",
         email,
-        status="failed"
-        if status_value in ("error", "skipped")
-        else "submitted",
+        status="failed" if status_value in ("error", "skipped") else "submitted",
         detail=json.dumps(detail),
     )
     if status_value in ("error", "skipped"):
-        return (
-            jsonify(
-                {
-                    "message": "Error terminating workstation",
-                    "detail": detail,
-                }
-            ),
-            500,
-        )
+        return jsonify(
+            {
+                "message": "Error terminating workstation",
+                "detail": detail,
+            }
+        ), 200
 
     return (
         jsonify(
