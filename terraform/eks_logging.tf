@@ -100,6 +100,8 @@ resource "helm_release" "aws_for_fluent_bit" {
     aws_eks_node_group.default,
     aws_iam_role.cw_fluentbit_irsa,
     aws_iam_role_policy_attachment.cw_fluentbit_attach,
+    # Ensure the AWS Load Balancer Controller (and its webhook)
+    # are fully installed before creating additional Services.
+    helm_release.aws_load_balancer_controller,
   ]
 }
-
